@@ -6,9 +6,9 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 use base64ct::{Base64Url, Encoding};
-use clap::Parser;
-use crossterm::execute;
+use clap::{CommandFactory, Parser};
 use crossterm::style::{Attribute, Color, Print, ResetColor, SetAttribute, SetForegroundColor};
+use crossterm::{execute, Command};
 use error_stack::{IntoReport, Report, Result, ResultExt};
 use sha2::{Digest, Sha256};
 use thiserror::Error;
@@ -82,6 +82,11 @@ fn main() -> Result<(), XiloError> {
         force,
         permanent,
     } = XiloCommand::parse();
+
+    if !permanent && filenames.is_empty() {
+        XiloCommand::command().print_long_help();
+        return Ok(());
+    }
 
     let trashbin_path = init_xilo(if filenames.is_empty() {
         permanent
