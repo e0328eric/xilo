@@ -94,7 +94,7 @@ fn main() -> Result<(), XiloError> {
         false
     })?;
 
-    if !filenames.is_empty() && !filenames.iter().any(|path| path.is_dir()) {
+    if !filenames.is_empty() && recursive && !filenames.iter().any(|path| path.is_dir()) {
         execute!(
             io::stdout(),
             SetAttribute(Attribute::Bold),
@@ -315,8 +315,6 @@ fn handle_file(
             _ => return Ok(()),
         }
     }
-
-    println!("{:?}", new_filename);
 
     match fs::rename(&filename, new_filename).into_report() {
         Ok(()) => Ok(()),
