@@ -52,12 +52,19 @@ impl Initializer {
             io::stdin().read_line(&mut buf)?;
 
             match buf.trim() {
-                "y" | "Y" | "yes" | "Yes" | "YES" => match fs::remove_dir_all(&trashbin_path) {
-                    Ok(()) => {}
-                    Err(err) => {
-                        return Err(XiloError::RippingTrashbinFailed(err).into());
+                "y" | "Y" | "yes" | "Yes" | "YES" => {
+                    let dir_iter = fs::read_dir(&trashbin_path)?;
+                    for entry in dir_iter {
+                        let path = entry?.path();
+                        if path.is_dir() {
+                            fs::remove_dir_all(path)
+                                .map_err(|err| XiloError::RippingTrashbinFailed(err))?;
+                        } else {
+                            fs::remove_file(path)
+                                .map_err(|err| XiloError::RippingTrashbinFailed(err))?;
+                        }
                     }
-                },
+                }
                 _ => {}
             }
         }
