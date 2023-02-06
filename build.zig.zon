@@ -1,0 +1,10 @@
+.{
+    .name = "xilo",
+    .version = "0.0.0",
+    .dependencies = .{
+        .zlap = .{
+            .url = "https://github.com/e0328eric/zlap/archive/refs/tags/v0.1.1.tar.gz",
+            .hash = "122096530a480bc2ecb6d649d0be8a5c13b0a35335c3c2a0fe51499f156f685a21f4",
+        }
+    }
+}
