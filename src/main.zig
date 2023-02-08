@@ -28,13 +28,19 @@ pub fn main() !void {
         break :flag flag.value.bool;
     };
 
-    if (zlap.is_help or (!is_permanent and file_contents.len == 0)) {
+    if (zlap.is_help) {
+        std.debug.print("{s}\n", .{zlap.help_msg});
+        return;
+    }
+
+    if (!is_permanent and file_contents.len == 0) {
         const err_msg = ansi.@"error" ++ "Error: " ++ ansi.reset ++ "there is no file/directory name to run this program.\n";
         const note_msg = ansi.warn ++ "Note:  " ++ ansi.reset ++ "add files or directories to remove.\n\n";
 
         std.debug.print(err_msg, .{});
         std.debug.print(note_msg, .{});
         std.debug.print("{s}\n", .{zlap.help_msg});
+        return;
     }
 
     var remover = try Remover.init(
