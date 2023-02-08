@@ -1,0 +1,23 @@
+#! /usr/bin/env python3
+
+import os
+
+targets = [
+    "x86_64-macos-none",
+    "x86_64-linux-gnu",
+    "x86-linux-gnu",
+    "aarch64-macos-none",
+    "aarch64-linux-gnu",
+]
+
+for target in targets:
+    print(
+        f"zig build -Doptimize=ReleaseSmall -Dtarget={target} --prefix-exe-dir xilo-{target}"
+    )
+    os.system(
+        f"zig build -Doptimize=ReleaseSmall -Dtarget={target} --prefix-exe-dir xilo-{target}"
+    )
+    print(f"tar cfJ ./zig-out/xilo-{target}.tar.xz ./zig-out/xilo-{target}")
+    os.system(f"tar cfJ ./zig-out/xilo-{target}.tar.xz ./zig-out/xilo-{target}")
+    print(f"rm -rf ./zig-out/xilo-{target}")
+    os.system(f"rm -rf ./zig-out/xilo-{target}")
