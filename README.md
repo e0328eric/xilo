@@ -4,7 +4,7 @@ An improved `rm` command. The origin of this program name comes from the greek w
 # How to install
 
 ## Use precompiled binary
-Download binary from `release`. All binaries are compiled into `ReleaseSmall` optimize.
+Download binary from `Releases`. All binaries are compiled into `ReleaseSmall` optimize.
 
 ## Build from source
 First, you need to 
