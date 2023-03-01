@@ -1,5 +1,6 @@
-# xilo
-An improved `rm` command. The origin of this program name comes from the greek word `ξήλωμα` which means the word `rip` in English.
+# xilo-zig
+An implementation of `xilo`. This is an example how to use [zlap](https://github.com/e0328eric/zlap.git) library.
+If you want to use *real* xilo, install with Rust one.
 
 # How to install
 
