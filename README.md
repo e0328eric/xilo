@@ -1,6 +1,5 @@
 # xilo-zig
-An implementation of `xilo`. This is an example how to use [zlap](https://github.com/e0328eric/zlap.git) library.
-If you want to use *real* xilo, install with Rust one.
+A simple replacement of "rm" command. This is also a practical example how to use [zlap](https://github.com/e0328eric/zlap.git) library.
 
 # How to install
 
