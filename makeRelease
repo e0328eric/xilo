@@ -17,7 +17,7 @@ for target in targets:
     os.system(
         f"zig build -Doptimize=ReleaseSmall -Dtarget={target} --prefix-exe-dir xilo-{target}"
     )
-    print(f"tar cfJ ./zig-out/xilo-{target}.tar.xz ./zig-out/xilo-{target}")
-    os.system(f"tar cfJ ./zig-out/xilo-{target}.tar.xz ./zig-out/xilo-{target}")
-    print(f"rm -rf ./zig-out/xilo-{target}")
-    os.system(f"rm -rf ./zig-out/xilo-{target}")
+    # print(f"tar cfJ ./zig-out/xilo-{target}.tar.xz ./zig-out/xilo-{target}")
+    # os.system(f"tar cfJ ./zig-out/xilo-{target}.tar.xz ./zig-out/xilo-{target}")
+    # print(f"rm -rf ./zig-out/xilo-{target}")
+    # os.system(f"rm -rf ./zig-out/xilo-{target}")

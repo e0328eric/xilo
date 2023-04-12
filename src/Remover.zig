@@ -91,6 +91,7 @@ fn delete(self: Self) !void {
             if (!yesValue.has(data)) return;
         }
 
+        // TODO: This cannot distinguish the symlink
         const is_dir = (try fs.cwd().statFile(filename)).kind == .Directory;
 
         if (is_dir and !self.recursive) return error.TryToRemoveDirectoryWithoutRecursiveFlag;
@@ -139,6 +140,7 @@ fn deletePermanently(self: Self) !void {
                 ++ " " ** 6 ++ "Are you sure to remove this? (y/N): ";
             // zig fmt: on
 
+            // TODO: This cannot distinguish the symlink
             const is_dir = (try fs.cwd().statFile(filename)).kind == .Directory;
             if (is_dir) {
                 std.debug.print(dir_msg_fmt, .{filename});

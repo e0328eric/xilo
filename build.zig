@@ -4,7 +4,7 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const version = std.builtin.Version{ .major = 0, .minor = 1, .patch = 1 };
+    const version = std.builtin.Version{ .major = 0, .minor = 1, .patch = 2 };
 
     const zlap_dep = b.dependency("zlap", .{
         .target = target,
@@ -19,9 +19,9 @@ pub fn build(b: *std.Build) void {
         .version = version,
     });
     exe.addModule("zlap", zlap_dep.module("zlap"));
-    exe.install();
+    b.installArtifact(exe);
 
-    const run_cmd = exe.run();
+    const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
     if (b.args) |args| {
         run_cmd.addArgs(args);
