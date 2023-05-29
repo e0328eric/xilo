@@ -9,6 +9,8 @@ const base64 = std.base64;
 const fmt = std.fmt;
 const time = std.time;
 
+const isDir = @import("./is_dir.zig").isDir;
+
 const isAbsolute = fs.path.isAbsolute;
 
 const Allocator = std.mem.Allocator;
@@ -91,10 +93,7 @@ fn delete(self: Self) !void {
             if (!yesValue.has(data)) return;
         }
 
-        // TODO: This cannot distinguish the symlink
-        const is_dir = (try fs.cwd().statFile(filename)).kind == .Directory;
-
-        if (is_dir and !self.recursive) return error.TryToRemoveDirectoryWithoutRecursiveFlag;
+        if (try isDir(filename) and !self.recursive) return error.TryToRemoveDirectoryWithoutRecursiveFlag;
 
         var mangled_name: ArrayList(u8) = undefined;
         if (isAbsolute(filename)) {
@@ -140,9 +139,7 @@ fn deletePermanently(self: Self) !void {
                 ++ " " ** 6 ++ "Are you sure to remove this? (y/N): ";
             // zig fmt: on
 
-            // TODO: This cannot distinguish the symlink
-            const is_dir = (try fs.cwd().statFile(filename)).kind == .Directory;
-            if (is_dir) {
+            if (try isDir(filename)) {
                 std.debug.print(dir_msg_fmt, .{filename});
             } else {
                 std.debug.print(file_msg_fmt, .{filename});

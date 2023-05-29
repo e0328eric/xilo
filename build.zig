@@ -4,7 +4,7 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const version = std.builtin.Version{ .major = 0, .minor = 1, .patch = 2 };
+    const version = std.builtin.Version{ .major = 0, .minor = 2, .patch = 0 };
 
     const zlap_dep = b.dependency("zlap", .{
         .target = target,
