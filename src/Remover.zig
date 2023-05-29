@@ -1,21 +1,24 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const ansi = @import("./ansi.zig");
-const mem = std.mem;
+const lstat = @import("./lstat.zig");
+const base64 = std.base64;
+const fmt = std.fmt;
 const fs = std.fs;
 const io = std.io;
 const math = std.math;
-const base64 = std.base64;
-const fmt = std.fmt;
+const mem = std.mem;
 const time = std.time;
 
-const isDir = @import("./is_dir.zig").isDir;
+const stdout = std.io.getStdOut().writer();
 
+const addNullByte = std.cstr.addNullByte;
 const isAbsolute = fs.path.isAbsolute;
 
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 const ComptimeStringMap = std.ComptimeStringMap;
+const SpaceShower = @import("./SpaceShower.zig");
 
 const yesValue = ComptimeStringMap(void, .{
     .{ "y", void },
@@ -36,6 +39,7 @@ trashbin_dir: fs.Dir,
 recursive: bool,
 force: bool,
 permanent: bool,
+show_space: bool,
 file_contents: []const []const u8,
 // END of fields
 
@@ -46,6 +50,7 @@ pub fn init(
     recursive: bool,
     force: bool,
     permanent: bool,
+    show_space: bool,
     file_contents: []const []const u8,
 ) !Self {
     const trashbin_path = try getTrashbinPath(allocator);
@@ -65,6 +70,7 @@ pub fn init(
         .recursive = recursive,
         .force = force,
         .permanent = permanent,
+        .show_space = show_space,
         .file_contents = file_contents,
     };
 }
@@ -74,18 +80,32 @@ pub fn deinit(self: *Self) void {
 }
 
 pub fn run(self: Self) !void {
-    if (self.permanent) {
-        return self.deletePermanently();
-    }
+    if (self.show_space) {
+        const trashbin_size = try self.getTrashbinSize();
+        const space_shower = SpaceShower.init(self.allocator);
+        const size_human_readable = try space_shower.parseBytes(trashbin_size);
+        defer size_human_readable.deinit();
 
-    return self.delete();
+        // zig fmt: off
+        const msg_fmt = ansi.note
+            ++ "Note: " ++ ansi.reset ++ "The space of the current trashbin is {s}.\n";
+        // zig fmt: on
+        try stdout.print(msg_fmt, .{size_human_readable.items});
+    } else if (self.permanent) {
+        return self.deletePermanently();
+    } else {
+        return self.delete();
+    }
 }
 
 fn delete(self: Self) !void {
     for (self.file_contents) |filename| {
         if (!self.force) {
-            const msg_fmt = ansi.warn ++ "Warn: " ++ ansi.reset ++ "Are you sure to remove `{s}`? (y/N): ";
-            std.debug.print(msg_fmt, .{filename});
+            // zig fmt: off
+            const msg_fmt = ansi.warn
+                ++ "Warn: " ++ ansi.reset ++ "Are you sure to remove `{s}`? (y/N): ";
+            // zig fmt: on
+            try stdout.print(msg_fmt, .{filename});
 
             const stdin = io.getStdIn().reader();
             const data = try stdin.readUntilDelimiterAlloc(self.allocator, '\n', 4096);
@@ -93,7 +113,9 @@ fn delete(self: Self) !void {
             if (!yesValue.has(data)) return;
         }
 
-        if (try isDir(filename) and !self.recursive) return error.TryToRemoveDirectoryWithoutRecursiveFlag;
+        const filename_z = try addNullByte(self.allocator, filename);
+        defer self.allocator.free(filename_z);
+        if (try lstat.isDir(filename_z) and !self.recursive) return error.TryToRemoveDirectoryWithoutRecursiveFlag;
 
         var mangled_name: ArrayList(u8) = undefined;
         if (isAbsolute(filename)) {
@@ -110,8 +132,11 @@ fn delete(self: Self) !void {
 
 fn deletePermanently(self: Self) !void {
     if (self.file_contents.len == 0) {
-        const msg_fmt = ansi.warn ++ "Warn: " ++ ansi.reset ++ "Are you sure to empty the trashbin? (y/N): ";
-        std.debug.print(msg_fmt, .{});
+        // zig fmt: off
+        const msg_fmt = ansi.warn
+            ++ "Warn: " ++ ansi.reset ++ "Are you sure to empty the trashbin? (y/N): ";
+        // zig fmt: on
+        try stdout.print(msg_fmt, .{});
 
         const stdin = io.getStdIn().reader();
         const data = try stdin.readUntilDelimiterAlloc(self.allocator, '\n', 4096);
@@ -133,16 +158,20 @@ fn deletePermanently(self: Self) !void {
     for (self.file_contents) |filename| {
         if (!self.force) {
             // zig fmt: off
-            const file_msg_fmt = ansi.warn ++ "Warn: " ++ ansi.reset ++ "the file `{s}` will be removed permantly.\n"
+            const file_msg_fmt = ansi.warn
+                ++ "Warn: " ++ ansi.reset ++ "the file `{s}` will be removed permantly.\n"
                 ++ " " ** 6 ++ "Are you sure to remove this? (y/N): ";
-            const dir_msg_fmt = ansi.warn ++ "Warn: " ++ ansi.reset ++ "the directory `{s}` and its subcontents will be removed permantly.\n"
+            const dir_msg_fmt = ansi.warn
+                ++ "Warn: " ++ ansi.reset ++ "the directory `{s}` and its subcontents will be removed permantly.\n"
                 ++ " " ** 6 ++ "Are you sure to remove this? (y/N): ";
             // zig fmt: on
 
-            if (try isDir(filename)) {
-                std.debug.print(dir_msg_fmt, .{filename});
+            const filename_z = try addNullByte(self.allocator, filename);
+            defer self.allocator.free(filename_z);
+            if (try lstat.isDir(filename_z)) {
+                try stdout.print(dir_msg_fmt, .{filename});
             } else {
-                std.debug.print(file_msg_fmt, .{filename});
+                try stdout.print(file_msg_fmt, .{filename});
             }
 
             const stdin = io.getStdIn().reader();
@@ -175,6 +204,35 @@ fn deletePermanently(self: Self) !void {
     }
 }
 
+fn getTrashbinSize(self: Self) !u64 {
+    var output: u64 = 0;
+    var trashbin = try fs.openIterableDirAbsolute(self.trashbin_path.items, .{});
+    defer trashbin.close();
+
+    var walker = try trashbin.walk(self.allocator);
+    defer walker.deinit();
+
+    while (try walker.next()) |file_content| {
+        const absolute_file_path_raw = file_content.dir.realpathAlloc(
+            self.allocator,
+            file_content.path,
+        ) catch |err| {
+            switch (err) {
+                error.FileNotFound => continue,
+                else => return err,
+            }
+        };
+        defer self.allocator.free(absolute_file_path_raw);
+        const absolute_file_path = try addNullByte(self.allocator, absolute_file_path_raw);
+        defer self.allocator.free(absolute_file_path);
+
+        const file_size = try lstat.getFileSize(absolute_file_path);
+        output +|= file_size;
+    }
+
+    return output;
+}
+
 fn getTrashbinPath(allocator: Allocator) !ArrayList(u8) {
     var output = try ArrayList(u8).initCapacity(allocator, 150);
     errdefer output.deinit();
@@ -188,7 +246,7 @@ fn getTrashbinPath(allocator: Allocator) !ArrayList(u8) {
             try output.appendSlice(std.os.getenv("HOME").?);
             try output.appendSlice("/.Trash");
         },
-        .windows => @compileError("windows not supported yet"),
+        .windows => @compileError("windows does not supported yet"),
         else => @compileError("only linux, macos and windows(not yet) are supported"),
     }
 

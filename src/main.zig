@@ -10,7 +10,7 @@ pub fn main() !void {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    var zlap = try Zlap.init(allocator, @embedFile("./xilo_command.json"));
+    var zlap = try Zlap.init(allocator, @embedFile("./xilo_commands.json"));
     defer zlap.deinit();
 
     // Datas from command line argument
@@ -27,15 +27,23 @@ pub fn main() !void {
         const flag = zlap.main_flags.get("permanent") orelse break :flag false;
         break :flag flag.value.bool;
     };
+    const is_show_space = flag: {
+        const flag = zlap.main_flags.get("show_space") orelse break :flag false;
+        break :flag flag.value.bool;
+    };
 
     if (zlap.is_help) {
         std.debug.print("{s}\n", .{zlap.help_msg});
         return;
     }
 
-    if (!is_permanent and file_contents.len == 0) {
-        const err_msg = ansi.@"error" ++ "Error: " ++ ansi.reset ++ "there is no file/directory name to run this program.\n";
-        const note_msg = ansi.warn ++ "Note:  " ++ ansi.reset ++ "add files or directories to remove.\n\n";
+    if (!is_show_space and !is_permanent and file_contents.len == 0) {
+        // zig fmt: off
+        const err_msg = ansi.@"error"
+            ++ "Error: " ++ ansi.reset ++ "there is no file/directory name to run this program.\n";
+        const note_msg = ansi.warn
+            ++ "Note:  " ++ ansi.reset ++ "add files or directories to remove.\n\n";
+        // zig fmt: on
 
         std.debug.print(err_msg, .{});
         std.debug.print(note_msg, .{});
@@ -48,6 +56,7 @@ pub fn main() !void {
         is_recursive,
         is_force,
         is_permanent,
+        is_show_space,
         file_contents,
     );
     defer remover.deinit();
@@ -55,7 +64,10 @@ pub fn main() !void {
     remover.run() catch |err| {
         switch (err) {
             error.TryToRemoveDirectoryWithoutRecursiveFlag => {
-                std.debug.print(ansi.@"error" ++ "Error: " ++ ansi.reset ++ "cannot remove a directory without `--recursive` flag\n", .{});
+                // zig fmt: off
+                std.debug.print(ansi.@"error" ++ "Error: "
+                    ++ ansi.reset ++ "cannot remove a directory without `--recursive` flag\n", .{});
+                // zig fmt: on
             },
             else => return err,
         }

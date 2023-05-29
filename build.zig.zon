@@ -1,6 +1,6 @@
 .{
     .name = "xilo",
-    .version = "0.2.0",
+    .version = "0.3.0",
     .dependencies = .{
         .zlap = .{
             .url = "https://github.com/e0328eric/zlap/archive/refs/tags/v0.3.0.tar.gz",

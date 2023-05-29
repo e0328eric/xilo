@@ -17,7 +17,22 @@ const LSTAT_SYSCALL = switch (builtin.os.tag) {
     else => @compileError("Other OS except macos or linux is not supported."),
 };
 
-pub fn isDir(path: []const u8) !bool {
+pub fn isDir(path: [:0]const u8) !bool {
+    const stat = try lstat(path);
+    return stat.st_mode & c.S_IFDIR != 0;
+}
+
+pub fn getFileSize(path: [:0]const u8) !u64 {
+    const stat = try lstat(path);
+    return if (stat.st_size >= 0) blk: {
+        break :blk @bitCast(u64, stat.st_size);
+    } else {
+        std.debug.print("{s} < {} >\n", .{ path, stat.st_size });
+        @panic("File size should be positive");
+    };
+}
+
+fn lstat(path: [:0]const u8) !c.struct_stat {
     var stat: c.struct_stat = undefined;
     const result = switch (builtin.os.tag) {
         .linux => switch (builtin.cpu.arch) {
@@ -57,5 +72,5 @@ pub fn isDir(path: []const u8) !bool {
     if (result < 0) {
         return error.IsDirDeterminationFailed;
     }
-    return stat.st_mode & c.S_IFDIR != 0;
+    return stat;
 }

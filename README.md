@@ -1,5 +1,6 @@
 # xilo
 A simple replacement of "rm" command. This is also a practical example how to use [zlap](https://github.com/e0328eric/zlap.git) library.
+The origin of this program name comes from the greek word `ξήλωμα` which means the word `rip` in English.
 
 # How to install
 
@@ -7,7 +8,7 @@ A simple replacement of "rm" command. This is also a practical example how to us
 Download binary from `Releases`. All binaries are compiled into `ReleaseSmall` optimize.
 
 ## Build from source
-First, you need to 
+First, you need to
 ```console
 $ zig run install -prefix-exe-dir <install path> -Doptimize=ReleaseSafe
 ```
