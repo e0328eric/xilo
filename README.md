@@ -9,7 +9,12 @@ Download binary from `Releases`. All binaries are compiled into `ReleaseSmall` o
 ## Build from source
 First, you need to 
 ```console
-$ zig run install -p <install path> -Doptimize=ReleaseSafe
+$ zig run install -prefix-exe-dir <install path> -Doptimize=ReleaseSafe
 ```
 where `<install path>` is the path where you want to put compiled executable.
 Then the executable will be saved at `<install path>/bin`.
+
+Recommended `<install path>` is `~/.local/bin`, so run this makes `xilo` to move into that directory.
+```console
+$ zig run install -prefix-exe-dir ~/.local/bin -Doptimize=ReleaseSafe
+```
