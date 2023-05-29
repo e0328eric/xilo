@@ -1,4 +1,4 @@
-# xilo-zig
+# xilo
 A simple replacement of "rm" command. This is also a practical example how to use [zlap](https://github.com/e0328eric/zlap.git) library.
 
 # How to install
