@@ -33,7 +33,8 @@ pub fn main() !void {
     };
 
     if (zlap.is_help) {
-        std.debug.print("{s}\n", .{zlap.help_msg});
+        const stdout = std.io.getStdOut().writer();
+        try stdout.print("{s}\n", .{zlap.help_msg});
         return;
     }
 
@@ -41,7 +42,7 @@ pub fn main() !void {
         // zig fmt: off
         const err_msg = ansi.@"error"
             ++ "Error: " ++ ansi.reset ++ "there is no file/directory name to run this program.\n";
-        const note_msg = ansi.warn
+        const note_msg = ansi.note
             ++ "Note:  " ++ ansi.reset ++ "add files or directories to remove.\n\n";
         // zig fmt: on
 

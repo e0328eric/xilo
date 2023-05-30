@@ -3,8 +3,6 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 
-const Self = @This();
-
 const KILOBYTE: u64 = 1 << 10;
 const MEGABYTE: u64 = 1 << 20;
 const GIGABYTE: u64 = 1 << 30;
@@ -12,18 +10,8 @@ const TERABYTE: u64 = 1 << 40;
 const PETABYTE: u64 = 1 << 50;
 const EXABYTE: u64 = 1 << 60;
 
-// fields for SpaceShower
-allocator: Allocator,
-// END of fields
-
-pub fn init(allocator: Allocator) Self {
-    return .{
-        .allocator = allocator,
-    };
-}
-
-pub fn parseBytes(self: Self, bytes: u64) !ArrayList(u8) {
-    var output = try ArrayList(u8).initCapacity(self.allocator, 50);
+pub fn parseBytes(allocator: Allocator, bytes: u64) !ArrayList(u8) {
+    var output = try ArrayList(u8).initCapacity(allocator, 50);
     errdefer output.deinit();
 
     var writer = output.writer();

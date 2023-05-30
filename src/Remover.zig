@@ -14,11 +14,11 @@ const stdout = std.io.getStdOut().writer();
 
 const addNullByte = std.cstr.addNullByte;
 const isAbsolute = fs.path.isAbsolute;
+const parseBytes = @import("./space_shower.zig").parseBytes;
 
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 const ComptimeStringMap = std.ComptimeStringMap;
-const SpaceShower = @import("./SpaceShower.zig");
 
 const yesValue = ComptimeStringMap(void, .{
     .{ "y", void },
@@ -82,8 +82,7 @@ pub fn deinit(self: *Self) void {
 pub fn run(self: Self) !void {
     if (self.show_space) {
         const trashbin_size = try self.getTrashbinSize();
-        const space_shower = SpaceShower.init(self.allocator);
-        const size_human_readable = try space_shower.parseBytes(trashbin_size);
+        const size_human_readable = try parseBytes(self.allocator, trashbin_size);
         defer size_human_readable.deinit();
 
         // zig fmt: off
