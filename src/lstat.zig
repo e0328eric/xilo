@@ -56,7 +56,8 @@ pub fn getDirSize(allocator: Allocator, dir_path: []const u8) !u64 {
             file_content.path,
         ) catch |err| {
             switch (err) {
-                error.FileNotFound => continue,
+                // XXX: Why error.NotDir can occur?
+                error.FileNotFound, error.NotDir => continue,
                 else => return err,
             }
         };
