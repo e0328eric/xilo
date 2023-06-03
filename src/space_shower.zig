@@ -1,14 +1,15 @@
 const std = @import("std");
+const powi = std.math.powi;
 
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 
-const KILOBYTE: u64 = 1 << 10;
-const MEGABYTE: u64 = 1 << 20;
-const GIGABYTE: u64 = 1 << 30;
-const TERABYTE: u64 = 1 << 40;
-const PETABYTE: u64 = 1 << 50;
-const EXABYTE: u64 = 1 << 60;
+const KILOBYTE: u64 = powi(u64, 10, 3) catch unreachable;
+const MEGABYTE: u64 = powi(u64, 10, 6) catch unreachable;
+const GIGABYTE: u64 = powi(u64, 10, 9) catch unreachable;
+const TERABYTE: u64 = powi(u64, 10, 12) catch unreachable;
+const PETABYTE: u64 = powi(u64, 10, 15) catch unreachable;
+const EXABYTE: u64 = powi(u64, 10, 18) catch unreachable;
 
 pub fn parseBytes(allocator: Allocator, bytes: u64) !ArrayList(u8) {
     var output = try ArrayList(u8).initCapacity(allocator, 50);

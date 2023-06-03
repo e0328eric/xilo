@@ -1,8 +1,13 @@
 const std = @import("std");
 const builtin = @import("builtin");
+const fs = std.fs;
 const c = @cImport({
     @cInclude("sys/stat.h");
 });
+
+const addNullByte = std.cstr.addNullByte;
+
+const Allocator = std.mem.Allocator;
 
 const MACOS_SYSCALL_OFFSET = 0x2000000;
 const LSTAT_SYSCALL = switch (builtin.os.tag) {
@@ -17,19 +22,54 @@ const LSTAT_SYSCALL = switch (builtin.os.tag) {
     else => @compileError("Other OS except macos or linux is not supported."),
 };
 
-pub fn isDir(path: [:0]const u8) !bool {
-    const stat = try lstat(path);
+pub fn isDir(allocator: Allocator, path: []const u8) !bool {
+    const path_null = try addNullByte(allocator, path);
+    defer allocator.free(path_null);
+
+    const stat = try lstat(path_null);
     return stat.st_mode & c.S_IFDIR != 0;
 }
 
-pub fn getFileSize(path: [:0]const u8) !u64 {
-    const stat = try lstat(path);
+pub fn getFileSize(allocator: Allocator, path: []const u8) !u64 {
+    const path_null = try addNullByte(allocator, path);
+    defer allocator.free(path_null);
+
+    const stat = try lstat(path_null);
     return if (stat.st_size >= 0) blk: {
         break :blk @bitCast(u64, stat.st_size);
     } else {
-        std.debug.print("{s} < {} >\n", .{ path, stat.st_size });
         @panic("File size should be positive");
     };
+}
+
+pub fn getDirSize(allocator: Allocator, dir_path: []const u8) !u64 {
+    var output: u64 = 0;
+    var trashbin = try fs.openIterableDirAbsolute(dir_path, .{});
+    defer trashbin.close();
+
+    var walker = try trashbin.walk(allocator);
+    defer walker.deinit();
+
+    while (try walker.next()) |file_content| {
+        const absolute_file_path = file_content.dir.realpathAlloc(
+            allocator,
+            file_content.path,
+        ) catch |err| {
+            switch (err) {
+                error.FileNotFound => continue,
+                else => return err,
+            }
+        };
+        defer allocator.free(absolute_file_path);
+
+        const file_size = if (try isDir(allocator, absolute_file_path))
+            try getDirSize(allocator, absolute_file_path)
+        else
+            try getFileSize(allocator, absolute_file_path);
+        output +|= file_size;
+    }
+
+    return output;
 }
 
 fn lstat(path: [:0]const u8) !c.struct_stat {

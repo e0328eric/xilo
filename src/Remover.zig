@@ -112,9 +112,9 @@ fn delete(self: Self) !void {
             if (!yesValue.has(data)) return;
         }
 
-        const filename_z = try addNullByte(self.allocator, filename);
-        defer self.allocator.free(filename_z);
-        if (try lstat.isDir(filename_z) and !self.recursive) return error.TryToRemoveDirectoryWithoutRecursiveFlag;
+        if (try lstat.isDir(self.allocator, filename) and !self.recursive) {
+            return error.TryToRemoveDirectoryWithoutRecursiveFlag;
+        }
 
         var mangled_name: ArrayList(u8) = undefined;
         if (isAbsolute(filename)) {
@@ -165,9 +165,7 @@ fn deletePermanently(self: Self) !void {
                 ++ " " ** 6 ++ "Are you sure to remove this? (y/N): ";
             // zig fmt: on
 
-            const filename_z = try addNullByte(self.allocator, filename);
-            defer self.allocator.free(filename_z);
-            if (try lstat.isDir(filename_z)) {
+            if (try lstat.isDir(self.allocator, filename)) {
                 try stdout.print(dir_msg_fmt, .{filename});
             } else {
                 try stdout.print(file_msg_fmt, .{filename});
@@ -204,32 +202,7 @@ fn deletePermanently(self: Self) !void {
 }
 
 fn getTrashbinSize(self: Self) !u64 {
-    var output: u64 = 0;
-    var trashbin = try fs.openIterableDirAbsolute(self.trashbin_path.items, .{});
-    defer trashbin.close();
-
-    var walker = try trashbin.walk(self.allocator);
-    defer walker.deinit();
-
-    while (try walker.next()) |file_content| {
-        const absolute_file_path_raw = file_content.dir.realpathAlloc(
-            self.allocator,
-            file_content.path,
-        ) catch |err| {
-            switch (err) {
-                error.FileNotFound => continue,
-                else => return err,
-            }
-        };
-        defer self.allocator.free(absolute_file_path_raw);
-        const absolute_file_path = try addNullByte(self.allocator, absolute_file_path_raw);
-        defer self.allocator.free(absolute_file_path);
-
-        const file_size = try lstat.getFileSize(absolute_file_path);
-        output +|= file_size;
-    }
-
-    return output;
+    return lstat.getDirSize(self.allocator, self.trashbin_path.items);
 }
 
 fn getTrashbinPath(allocator: Allocator) !ArrayList(u8) {
