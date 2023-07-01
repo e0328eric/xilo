@@ -1,10 +1,9 @@
 const std = @import("std");
 
-pub fn build(b: *std.Build) void {
+pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
-
-    const version = std.builtin.Version{ .major = 0, .minor = 3, .patch = 1 };
+    const version = try std.SemanticVersion.parse("0.3.1");
 
     const zlap_dep = b.dependency("zlap", .{
         .target = target,

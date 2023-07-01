@@ -33,10 +33,10 @@ pub fn makeAnsi(comptime color: ?Color, comptime attr: ?Attribute) []const u8 {
     comptime var color_buf = [_]u8{0} ** 5;
 
     const attr_str = if (attr) |a| blk: {
-        break :blk fmt.bufPrint(&attr_buf, "\x1b[{d}m", .{@enumToInt(a)}) catch unreachable;
+        break :blk fmt.bufPrint(&attr_buf, "\x1b[{d}m", .{@intFromEnum(a)}) catch unreachable;
     } else "";
     const color_str = if (color) |c| blk: {
-        break :blk fmt.bufPrint(&color_buf, "\x1b[{d}m", .{@enumToInt(c)}) catch unreachable;
+        break :blk fmt.bufPrint(&color_buf, "\x1b[{d}m", .{@intFromEnum(c)}) catch unreachable;
     } else "";
 
     return attr_str ++ color_str;

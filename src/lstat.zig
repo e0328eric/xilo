@@ -23,7 +23,7 @@ const LSTAT_SYSCALL = switch (builtin.os.tag) {
 };
 
 pub fn isDir(allocator: Allocator, path: []const u8) !bool {
-    const path_null = try addNullByte(allocator, path);
+    const path_null = try allocator.dupeZ(u8, path);
     defer allocator.free(path_null);
 
     const stat = try lstat(path_null);
@@ -31,12 +31,12 @@ pub fn isDir(allocator: Allocator, path: []const u8) !bool {
 }
 
 pub fn getFileSize(allocator: Allocator, path: []const u8) !u64 {
-    const path_null = try addNullByte(allocator, path);
+    const path_null = try allocator.dupeZ(u8, path);
     defer allocator.free(path_null);
 
     const stat = try lstat(path_null);
     return if (stat.st_size >= 0) blk: {
-        break :blk @bitCast(u64, stat.st_size);
+        break :blk @bitCast(stat.st_size);
     } else {
         @panic("File size should be positive");
     };
