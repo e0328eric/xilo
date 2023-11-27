@@ -18,6 +18,7 @@ pub fn build(b: *std.Build) !void {
         .version = version,
     });
     exe.addModule("zlap", zlap_dep.module("zlap"));
+    exe.linkLibC();
     b.installArtifact(exe);
 
     const run_cmd = b.addRunArtifact(exe);

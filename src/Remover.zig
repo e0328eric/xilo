@@ -142,7 +142,7 @@ fn deletePermanently(self: Self) !void {
 
         if (!yesValue.has(data)) return;
 
-        var dir_iter = try self.trashbin_dir.openIterableDir(".", .{});
+        var dir_iter = try self.trashbin_dir.openDir(".", .{});
         defer dir_iter.close();
         var walker = try dir_iter.walk(self.allocator);
         defer walker.deinit();
