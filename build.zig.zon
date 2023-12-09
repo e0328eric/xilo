@@ -6,6 +6,6 @@
         .zlap = .{
             .url = "https://github.com/e0328eric/zlap/archive/refs/tags/v0.3.4.tar.gz",
             .hash = "1220829a122c4cdcab807342d550734ca40945bc831b768edffb767469017c8342c5",
-        }
-    }
+        },
+    },
 }
