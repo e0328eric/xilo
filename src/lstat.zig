@@ -5,8 +5,6 @@ const c = @cImport({
     @cInclude("sys/stat.h");
 });
 
-const addNullByte = std.cstr.addNullByte;
-
 const Allocator = std.mem.Allocator;
 
 const MACOS_SYSCALL_OFFSET = 0x2000000;
