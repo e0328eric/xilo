@@ -1,12 +1,11 @@
 const std = @import("std");
+const heap = std.heap;
 const ansi = @import("./ansi.zig");
 const Remover = @import("./Remover.zig");
 const Zlap = @import("zlap").Zlap;
 
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    var arena = std.heap.ArenaAllocator.init(gpa.allocator());
+    var arena = std.heap.ArenaAllocator.init(heap.page_allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
 
