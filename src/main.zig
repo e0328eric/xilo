@@ -9,7 +9,7 @@ pub fn main() !void {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    var zlap = try Zlap.init(allocator, @embedFile("./xilo_commands.json"));
+    var zlap = try Zlap.init(allocator, @embedFile("./xilo_commands_minify.json"));
     defer zlap.deinit();
 
     // Datas from command line argument
