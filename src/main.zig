@@ -4,7 +4,7 @@ const ansi = @import("./ansi.zig");
 const Remover = @import("./Remover.zig");
 const Zlap = @import("zlap").Zlap;
 
-pub fn main() !void {
+pub fn main() !u8 {
     var arena = std.heap.ArenaAllocator.init(heap.page_allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
@@ -34,7 +34,7 @@ pub fn main() !void {
     if (zlap.is_help) {
         const stdout = std.io.getStdOut().writer();
         try stdout.print("{s}\n", .{zlap.help_msg});
-        return;
+        return 1;
     }
 
     if (!is_show_space and !is_permanent and file_contents.len == 0) {
@@ -48,7 +48,7 @@ pub fn main() !void {
         std.debug.print(err_msg, .{});
         std.debug.print(note_msg, .{});
         std.debug.print("{s}\n", .{zlap.help_msg});
-        return;
+        return 1;
     }
 
     var remover = try Remover.init(
@@ -72,4 +72,6 @@ pub fn main() !void {
             else => return err,
         }
     };
+
+    return 0;
 }
