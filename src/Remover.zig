@@ -218,7 +218,6 @@ fn getTrashbinPath(allocator: Allocator) !ArrayList(u8) {
         .linux => {
             try output.appendSlice(std.posix.getenv("HOME").?);
             try output.appendSlice("/.cache/xilo");
-            std.debug.print("{s}\n", .{output.items});
         },
         .macos => {
             try output.appendSlice(std.posix.getenv("HOME").?);
