@@ -120,11 +120,16 @@ fn delete(self: Self) !void {
         if (isAbsolute(filename)) {
             mangled_name = try self.nameMangling(true, filename);
             defer mangled_name.deinit();
-            try fs.renameAbsolute(filename, mangled_name.items);
+            try @import("./rename.zig").renameAbsolute(filename, mangled_name.items);
         } else {
             mangled_name = try self.nameMangling(false, filename);
             defer mangled_name.deinit();
-            try fs.rename(fs.cwd(), filename, self.trashbin_dir, mangled_name.items);
+            try @import("./rename.zig").rename(
+                fs.cwd(),
+                filename,
+                self.trashbin_dir,
+                mangled_name.items,
+            );
         }
     }
 }
@@ -142,7 +147,7 @@ fn deletePermanently(self: Self) !void {
 
         if (!yesValue.has(data)) return;
 
-        var dir_iter = try self.trashbin_dir.openDir(".", .{});
+        var dir_iter = try self.trashbin_dir.openDir(".", .{ .iterate = true });
         defer dir_iter.close();
         var walker = try dir_iter.walk(self.allocator);
         defer walker.deinit();
@@ -211,11 +216,12 @@ fn getTrashbinPath(allocator: Allocator) !ArrayList(u8) {
 
     switch (builtin.os.tag) {
         .linux => {
-            try output.appendSlice(std.os.getenv("HOME").?);
+            try output.appendSlice(std.posix.getenv("HOME").?);
             try output.appendSlice("/.cache/xilo");
+            std.debug.print("{s}\n", .{output.items});
         },
         .macos => {
-            try output.appendSlice(std.os.getenv("HOME").?);
+            try output.appendSlice(std.posix.getenv("HOME").?);
             try output.appendSlice("/.Trash");
         },
         .windows => @compileError("windows does not supported yet"),

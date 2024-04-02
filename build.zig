@@ -1,8 +1,7 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-const xilo_version = std.SemanticVersion{ .major = 0, .minor = 3, .patch = 2 };
-
+const xilo_version = std.SemanticVersion.parse("0.4.0") catch unreachable;
 const min_zig_string = "0.12.0-dev.2058+04ac028a2";
 
 // NOTE: This code came from
@@ -25,13 +24,10 @@ pub fn build(b: *Build) !void {
 
     const zlap_module = b.dependency("zlap", .{}).module("zlap");
 
-    const exe = b.addExecutable(.{
-        .name = "xilo",
-        .root_source_file = .{ .path = "src/main.zig" },
-        .target = target,
-        .optimize = optimize,
-        .version = xilo_version,
-    });
+    const exe = b.addExecutable(.{ .name = "xilo", .root_source_file = .{ .path = "src/main.zig" }, .target = target, .optimize = optimize, .version = xilo_version, .strip = switch (optimize) {
+        .Debug, .ReleaseSafe => false,
+        else => true,
+    } });
     exe.root_module.addImport("zlap", zlap_module);
     exe.linkLibC();
     b.installArtifact(exe);
