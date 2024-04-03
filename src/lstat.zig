@@ -42,7 +42,7 @@ pub fn getFileSize(allocator: Allocator, path: []const u8) !u64 {
 
 pub fn getDirSize(allocator: Allocator, dir_path: []const u8) !u64 {
     var output: u64 = 0;
-    var trashbin = try fs.openDirAbsolute(dir_path, .{});
+    var trashbin = try fs.openDirAbsolute(dir_path, .{ .iterate = true });
     defer trashbin.close();
 
     var walker = try trashbin.walk(allocator);
