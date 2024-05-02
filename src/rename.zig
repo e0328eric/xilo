@@ -1,8 +1,13 @@
 const std = @import("std");
 const io = std.io;
 const fs = std.fs;
+const base64 = std.base64;
+const fileinfo = @import("./fileinfo.zig");
+
+const Allocator = std.mem.Allocator;
 
 pub fn rename(
+    allocator: Allocator,
     old_dir: fs.Dir,
     old_subpath: []const u8,
     new_dir: fs.Dir,
@@ -10,6 +15,7 @@ pub fn rename(
 ) !void {
     fs.rename(old_dir, old_subpath, new_dir, new_subpath) catch |err| switch (err) {
         error.RenameAcrossMountPoints => try renameAcrossMountPoints(
+            allocator,
             old_dir,
             old_subpath,
             new_dir,
@@ -19,9 +25,14 @@ pub fn rename(
     };
 }
 
-pub fn renameAbsolute(old_path: []const u8, new_path: []const u8) !void {
+pub fn renameAbsolute(
+    allocator: Allocator,
+    old_path: []const u8,
+    new_path: []const u8,
+) !void {
     fs.renameAbsolute(old_path, new_path) catch |err| switch (err) {
         error.RenameAcrossMountPoints => try renameAbsoluteAcrossMountPoints(
+            allocator,
             old_path,
             new_path,
         ),
@@ -30,6 +41,65 @@ pub fn renameAbsolute(old_path: []const u8, new_path: []const u8) !void {
 }
 
 fn renameAcrossMountPoints(
+    allocator: Allocator,
+    old_dir: fs.Dir,
+    old_subpath: []const u8,
+    new_dir: fs.Dir,
+    new_subpath: []const u8,
+) !void {
+    if (try fileinfo.isDir(old_subpath)) {
+        try renameAcrossMountPointsDirs(allocator, old_dir, old_subpath, new_dir, new_subpath);
+    } else {
+        try renameAcrossMountPointsFiles(old_dir, old_subpath, new_dir, new_subpath);
+    }
+}
+
+fn renameAcrossMountPointsDirs(
+    allocator: Allocator,
+    old_dir: fs.Dir,
+    old_subpath: []const u8,
+    new_dir: fs.Dir,
+    new_subpath: []const u8,
+) !void {
+    var dir_movefrom = try old_dir.openDir(old_subpath, .{ .iterate = true });
+    defer dir_movefrom.close();
+    new_dir.makeDir(new_subpath) catch |err| switch (err) {
+        error.PathAlreadyExists => {},
+        else => return err,
+    };
+    var dir_moveinto = try new_dir.openDir(new_subpath, .{});
+    defer dir_moveinto.close();
+
+    var walker = try dir_movefrom.walk(allocator);
+    defer walker.deinit();
+
+    while (try walker.next()) |entry| {
+        const path = try entry.dir.realpathAlloc(allocator, entry.path);
+        defer allocator.free(path);
+
+        if (try fileinfo.isDir(path)) {
+            try renameAcrossMountPointsDirs(
+                allocator,
+                entry.dir,
+                entry.path,
+                dir_moveinto,
+                entry.path,
+            );
+        } else {
+            try renameAcrossMountPointsFiles(
+                entry.dir,
+                entry.path,
+                dir_moveinto,
+                entry.path,
+            );
+        }
+    }
+
+    // delete directory recursively
+    try old_dir.deleteTree(old_subpath);
+}
+
+fn renameAcrossMountPointsFiles(
     old_dir: fs.Dir,
     old_subpath: []const u8,
     new_dir: fs.Dir,
@@ -61,7 +131,62 @@ fn renameAcrossMountPoints(
     try old_dir.deleteFile(old_subpath);
 }
 
-fn renameAbsoluteAcrossMountPoints(old_path: []const u8, new_path: []const u8) !void {
+fn renameAbsoluteAcrossMountPoints(
+    allocator: Allocator,
+    old_path: []const u8,
+    new_path: []const u8,
+) !void {
+    var dir_movefrom = try fs.openDirAbsolute(old_path, .{ .iterate = true });
+    defer dir_movefrom.close();
+    fs.makeDirAbsolute(new_path) catch |err| switch (err) {
+        error.PathAlreadyExists => {},
+        else => return err,
+    };
+    var dir_moveinto = try fs.openDirAbsolute(new_path, .{});
+    defer dir_moveinto.close();
+
+    var walker = try dir_movefrom.walk(allocator);
+    defer walker.deinit();
+
+    while (try walker.next()) |entry| {
+        const path = try entry.dir.realpathAlloc(allocator, entry.path);
+        defer allocator.free(path);
+
+        if (try fileinfo.isDir(path)) {
+            try renameAcrossMountPointsDirs(
+                allocator,
+                entry.dir,
+                entry.path,
+                dir_moveinto,
+                entry.path,
+            );
+        } else {
+            try renameAcrossMountPointsFiles(
+                entry.dir,
+                entry.path,
+                dir_moveinto,
+                entry.path,
+            );
+        }
+    }
+
+    // delete directory recursively
+    var delete_walker = try dir_movefrom.walk(allocator);
+    defer delete_walker.deinit();
+
+    while (try walker.next()) |entry| {
+        const path = try entry.dir.realpathAlloc(allocator, entry.path);
+        defer allocator.free(path);
+
+        if (try fileinfo.isDir(path)) {
+            try entry.dir.deleteTree(entry.path);
+        } else {
+            try entry.dir.deleteFile(entry.path);
+        }
+    }
+}
+
+fn renameAbsoluteAcrossMountPointsFiles(old_path: []const u8, new_path: []const u8) !void {
     var already_closed = false;
 
     const file_movefrom = try fs.openFileAbsolute(old_path, .{});

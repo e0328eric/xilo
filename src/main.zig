@@ -5,7 +5,7 @@ const Remover = @import("./Remover.zig");
 const Zlap = @import("zlap").Zlap;
 
 pub fn main() !u8 {
-    var arena = std.heap.ArenaAllocator.init(heap.page_allocator);
+    var arena = std.heap.ArenaAllocator.init(heap.c_allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
 

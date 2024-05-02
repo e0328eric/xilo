@@ -1,7 +1,7 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-const xilo_version = std.SemanticVersion.parse("0.4.1") catch unreachable;
+const xilo_version = std.SemanticVersion.parse("0.5.0") catch unreachable;
 const min_zig_string = "0.12.0";
 
 // NOTE: This code came from
@@ -38,7 +38,8 @@ pub fn build(b: *Build) !void {
         },
     );
     exe.root_module.addImport("zlap", zlap_module);
-    exe.linkLibC();
+    exe.linkLibCpp();
+    exe.addCSourceFile(.{ .file = .{ .path = "./src/fileinfo.cc" }, .flags = &.{"-std=c++17"} });
     b.installArtifact(exe);
 
     const run_cmd = b.addRunArtifact(exe);

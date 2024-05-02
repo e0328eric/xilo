@@ -1,7 +1,7 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const ansi = @import("./ansi.zig");
-const lstat = @import("./lstat.zig");
+const fileinfo = @import("./fileinfo.zig");
 const base64 = std.base64;
 const fmt = std.fmt;
 const fs = std.fs;
@@ -112,7 +112,7 @@ fn delete(self: Self) !void {
             if (!yesValue.has(data)) return;
         }
 
-        if (try lstat.isDir(self.allocator, filename) and !self.recursive) {
+        if (try fileinfo.isDir(filename) and !self.recursive) {
             return error.TryToRemoveDirectoryWithoutRecursiveFlag;
         }
 
@@ -120,11 +120,12 @@ fn delete(self: Self) !void {
         if (isAbsolute(filename)) {
             mangled_name = try self.nameMangling(true, filename);
             defer mangled_name.deinit();
-            try @import("./rename.zig").renameAbsolute(filename, mangled_name.items);
+            try @import("./rename.zig").renameAbsolute(self.allocator, filename, mangled_name.items);
         } else {
             mangled_name = try self.nameMangling(false, filename);
             defer mangled_name.deinit();
             try @import("./rename.zig").rename(
+                self.allocator,
                 fs.cwd(),
                 filename,
                 self.trashbin_dir,
@@ -170,7 +171,7 @@ fn deletePermanently(self: Self) !void {
                 ++ " " ** 6 ++ "Are you sure to remove this? (y/N): ";
             // zig fmt: on
 
-            if (try lstat.isDir(self.allocator, filename)) {
+            if (try fileinfo.isDir(filename)) {
                 try stdout.print(dir_msg_fmt, .{filename});
             } else {
                 try stdout.print(file_msg_fmt, .{filename});
@@ -207,7 +208,7 @@ fn deletePermanently(self: Self) !void {
 }
 
 fn getTrashbinSize(self: Self) !u64 {
-    return lstat.getDirSize(self.allocator, self.trashbin_path.items);
+    return fileinfo.getDirSize(self.allocator, self.trashbin_path.items);
 }
 
 fn getTrashbinPath(allocator: Allocator) !ArrayList(u8) {
