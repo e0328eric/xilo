@@ -1,8 +1,9 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-const xilo_version = std.SemanticVersion.parse("0.5.0") catch unreachable;
-const min_zig_string = "0.12.0";
+const xilo_version = std.SemanticVersion.parse("0.5.1") catch unreachable;
+const min_zig_string = "0.13.0-dev.46+3648d7df1";
+const program_name = "xilo";
 
 // NOTE: This code came from
 // https://github.com/zigtools/zls/blob/master/build.zig.
@@ -26,7 +27,7 @@ pub fn build(b: *Build) !void {
 
     const exe = b.addExecutable(
         .{
-            .name = "xilo",
+            .name = program_name,
             .root_source_file = .{ .path = "src/main.zig" },
             .target = target,
             .optimize = optimize,
@@ -37,9 +38,14 @@ pub fn build(b: *Build) !void {
             },
         },
     );
+    const cpp_flags = [_][]const u8{"-std=c++17"} ++ if (optimize == .Debug)
+        [_][]const u8{"-DZIG_DEBUG_MODE"}
+    else
+        [_][]const u8{""};
+
     exe.root_module.addImport("zlap", zlap_module);
     exe.linkLibCpp();
-    exe.addCSourceFile(.{ .file = .{ .path = "./src/fileinfo.cc" }, .flags = &.{"-std=c++17"} });
+    exe.addCSourceFile(.{ .file = .{ .path = "./src/fileinfo.cc" }, .flags = &cpp_flags });
     b.installArtifact(exe);
 
     const run_cmd = b.addRunArtifact(exe);

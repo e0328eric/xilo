@@ -18,9 +18,9 @@ const parseBytes = @import("./space_shower.zig").parseBytes;
 
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
-const ComptimeStringMap = std.ComptimeStringMap;
+const StaticStringMap = std.StaticStringMap;
 
-const yesValue = ComptimeStringMap(void, .{
+const yesValue = StaticStringMap(void).initComptime(.{
     .{ "y", void },
     .{ "Y", void },
     .{ "yes", void },
