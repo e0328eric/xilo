@@ -13,7 +13,7 @@ pub fn main() !u8 {
     defer zlap.deinit();
 
     // Datas from command line argument
-    const file_contents = zlap.main_args.items[0].value.strings.items;
+    const file_contents = zlap.main_args.get("FILES").?.value.strings.items;
     const is_recursive = flag: {
         const flag = zlap.main_flags.get("recursive") orelse break :flag false;
         break :flag flag.value.bool;

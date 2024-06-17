@@ -162,14 +162,12 @@ fn deletePermanently(self: Self) !void {
 
     for (self.file_contents) |filename| {
         if (!self.force) {
-            // zig fmt: off
-            const file_msg_fmt = ansi.warn
-                ++ "Warn: " ++ ansi.reset ++ "the file `{s}` will be removed permantly.\n"
-                ++ " " ** 6 ++ "Are you sure to remove this? (y/N): ";
-            const dir_msg_fmt = ansi.warn
-                ++ "Warn: " ++ ansi.reset ++ "the directory `{s}` and its subcontents will be removed permantly.\n"
-                ++ " " ** 6 ++ "Are you sure to remove this? (y/N): ";
-            // zig fmt: on
+            const file_msg_fmt = ansi.warn ++ "Warn: " ++ ansi.reset ++
+                "the file `{s}` will be removed permantly.\n" ++
+                " " ** 6 ++ "Are you sure to remove this? (y/N): ";
+            const dir_msg_fmt = ansi.warn ++ "Warn: " ++ ansi.reset ++
+                "the directory `{s}` and its subcontents will be removed permantly.\n" ++
+                " " ** 6 ++ "Are you sure to remove this? (y/N): ";
 
             if (try fileinfo.isDir(filename)) {
                 try stdout.print(dir_msg_fmt, .{filename});
@@ -254,9 +252,9 @@ fn nameMangling(self: Self, comptime is_absolute: bool, filename: []const u8) !A
     const hashed_string = base64_encoder.encode(&base64_buf, path_hash);
 
     if (is_absolute) {
-        try writer.print("{s}/{s}!{s}", .{ self.trashbin_path.items, hashed_string, basename });
+        try writer.print("{s}/{s}!{s}", .{ self.trashbin_path.items, basename, hashed_string });
     } else {
-        try writer.print("{s}!{s}", .{ hashed_string, basename });
+        try writer.print("{s}!{s}", .{ basename, hashed_string });
     }
 
     return output;
