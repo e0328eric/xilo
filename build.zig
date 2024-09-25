@@ -1,8 +1,8 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-const xilo_version = std.SemanticVersion.parse("0.5.1") catch unreachable;
-const min_zig_string = "0.13.0";
+const xilo_version = std.SemanticVersion.parse("0.6.0") catch unreachable;
+const min_zig_string = "0.14.0-dev.1637+8c232922b";
 const program_name = "xilo";
 
 // NOTE: This code came from

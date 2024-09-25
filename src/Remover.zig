@@ -8,9 +8,8 @@ const fs = std.fs;
 const io = std.io;
 const math = std.math;
 const mem = std.mem;
+const process = std.process;
 const time = std.time;
-
-const stdout = std.io.getStdOut().writer();
 
 const addNullByte = std.cstr.addNullByte;
 const isAbsolute = fs.path.isAbsolute;
@@ -20,6 +19,10 @@ const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 const StaticStringMap = std.StaticStringMap;
 
+const XiloError = error{
+    TryToRemoveDirectoryWithoutRecursiveFlag,
+};
+
 const yesValue = StaticStringMap(void).initComptime(.{
     .{ "y", void },
     .{ "Y", void },
@@ -27,10 +30,6 @@ const yesValue = StaticStringMap(void).initComptime(.{
     .{ "Yes", void },
     .{ "YES", void },
 });
-
-const XiloError = error{
-    TryToRemoveDirectoryWithoutRecursiveFlag,
-};
 
 // fields for Remover
 allocator: Allocator,
@@ -80,6 +79,7 @@ pub fn deinit(self: *Self) void {
 }
 
 pub fn run(self: Self) !void {
+    const stdout = std.io.getStdOut().writer();
     if (self.show_space) {
         const trashbin_size = try self.getTrashbinSize();
         const size_human_readable = try parseBytes(self.allocator, trashbin_size);
@@ -98,18 +98,23 @@ pub fn run(self: Self) !void {
 }
 
 fn delete(self: Self) !void {
+    const stdout = std.io.getStdOut().writer();
     for (self.file_contents) |filename| {
         if (!self.force) {
-            // zig fmt: off
-            const msg_fmt = ansi.warn
-                ++ "Warn: " ++ ansi.reset ++ "Are you sure to remove `{s}`? (y/N): ";
-            // zig fmt: on
+            const msg_fmt = ansi.warn ++ "Warn: " ++
+                ansi.reset ++ "Are you sure to remove `{s}`? (y/N): ";
             try stdout.print(msg_fmt, .{filename});
 
             const stdin = io.getStdIn().reader();
             const data = try stdin.readUntilDelimiterAlloc(self.allocator, '\n', 4096);
+            defer self.allocator.free(data);
 
-            if (!yesValue.has(data)) return;
+            // Since windows uses CRLF for EOL, we should trim \r character.
+            if (builtin.os.tag == .windows) {
+                if (!yesValue.has(mem.trimRight(u8, data, "\r"))) return;
+            } else {
+                if (!yesValue.has(data)) return;
+            }
         }
 
         if (try fileinfo.isDir(filename) and !self.recursive) {
@@ -120,7 +125,11 @@ fn delete(self: Self) !void {
         if (isAbsolute(filename)) {
             mangled_name = try self.nameMangling(true, filename);
             defer mangled_name.deinit();
-            try @import("./rename.zig").renameAbsolute(self.allocator, filename, mangled_name.items);
+            try @import("./rename.zig").renameAbsolute(
+                self.allocator,
+                filename,
+                mangled_name.items,
+            );
         } else {
             mangled_name = try self.nameMangling(false, filename);
             defer mangled_name.deinit();
@@ -136,11 +145,10 @@ fn delete(self: Self) !void {
 }
 
 fn deletePermanently(self: Self) !void {
+    const stdout = std.io.getStdOut().writer();
     if (self.file_contents.len == 0) {
-        // zig fmt: off
-        const msg_fmt = ansi.warn
-            ++ "Warn: " ++ ansi.reset ++ "Are you sure to empty the trashbin? (y/N): ";
-        // zig fmt: on
+        const msg_fmt = ansi.warn ++ "Warn: " ++
+            ansi.reset ++ "Are you sure to empty the trashbin? (y/N): ";
         try stdout.print(msg_fmt, .{});
 
         const stdin = io.getStdIn().reader();
@@ -185,7 +193,8 @@ fn deletePermanently(self: Self) !void {
             fs.deleteFileAbsolute(filename) catch |err| {
                 switch (err) {
                     error.IsDir => {
-                        if (!self.recursive) return error.TryToRemoveDirectoryWithoutRecursiveFlag;
+                        if (!self.recursive)
+                            return error.TryToRemoveDirectoryWithoutRecursiveFlag;
                         try fs.deleteTreeAbsolute(filename);
                     },
                     else => return err,
@@ -195,7 +204,8 @@ fn deletePermanently(self: Self) !void {
             fs.cwd().deleteFile(filename) catch |err| {
                 switch (err) {
                     error.IsDir => {
-                        if (!self.recursive) return error.TryToRemoveDirectoryWithoutRecursiveFlag;
+                        if (!self.recursive)
+                            return error.TryToRemoveDirectoryWithoutRecursiveFlag;
                         try fs.cwd().deleteTree(filename);
                     },
                     else => return err,
@@ -222,14 +232,26 @@ fn getTrashbinPath(allocator: Allocator) !ArrayList(u8) {
             try output.appendSlice(std.posix.getenv("HOME").?);
             try output.appendSlice("/.Trash");
         },
-        .windows => @compileError("windows does not supported yet"),
-        else => @compileError("only linux, macos and windows(not yet) are supported"),
+        .windows => {
+            const appdata_location = try process.getEnvVarOwned(
+                allocator,
+                "APPDATA",
+            );
+            defer allocator.free(appdata_location);
+            try output.appendSlice(appdata_location);
+            try output.appendSlice("\\xilo");
+        },
+        else => @compileError("only linux, macos and windows are supported"),
     }
 
     return output;
 }
 
-fn nameMangling(self: Self, comptime is_absolute: bool, filename: []const u8) !ArrayList(u8) {
+fn nameMangling(
+    self: Self,
+    comptime is_absolute: bool,
+    filename: []const u8,
+) !ArrayList(u8) {
     var output = try ArrayList(u8).initCapacity(self.allocator, 200);
     errdefer output.deinit();
     var writer = output.writer();
@@ -252,7 +274,11 @@ fn nameMangling(self: Self, comptime is_absolute: bool, filename: []const u8) !A
     const hashed_string = base64_encoder.encode(&base64_buf, path_hash);
 
     if (is_absolute) {
-        try writer.print("{s}/{s}!{s}", .{ self.trashbin_path.items, basename, hashed_string });
+        try writer.print("{s}/{s}!{s}", .{
+            self.trashbin_path.items,
+            basename,
+            hashed_string,
+        });
     } else {
         try writer.print("{s}!{s}", .{ basename, hashed_string });
     }
