@@ -153,8 +153,14 @@ fn deletePermanently(self: Self) !void {
 
         const stdin = io.getStdIn().reader();
         const data = try stdin.readUntilDelimiterAlloc(self.allocator, '\n', 4096);
+        defer self.allocator.free(data);
 
-        if (!yesValue.has(data)) return;
+        // Since windows uses CRLF for EOL, we should trim \r character.
+        if (builtin.os.tag == .windows) {
+            if (!yesValue.has(mem.trimRight(u8, data, "\r"))) return;
+        } else {
+            if (!yesValue.has(data)) return;
+        }
 
         var dir_iter = try self.trashbin_dir.openDir(".", .{ .iterate = true });
         defer dir_iter.close();
@@ -185,8 +191,14 @@ fn deletePermanently(self: Self) !void {
 
             const stdin = io.getStdIn().reader();
             const data = try stdin.readUntilDelimiterAlloc(self.allocator, '\n', 4096);
+            defer self.allocator.free(data);
 
-            if (!yesValue.has(data)) return;
+            // Since windows uses CRLF for EOL, we should trim \r character.
+            if (builtin.os.tag == .windows) {
+                if (!yesValue.has(mem.trimRight(u8, data, "\r"))) return;
+            } else {
+                if (!yesValue.has(data)) return;
+            }
         }
 
         if (isAbsolute(filename)) {
