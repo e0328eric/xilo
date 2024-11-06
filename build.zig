@@ -23,6 +23,14 @@ pub fn build(b: *Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const custom_trashbin_path = b.option(
+        []const u8,
+        "trashbin_path",
+        "Specify the custom trashbin_path",
+    );
+    const exe_options = b.addOptions();
+    exe_options.addOption(?[]const u8, "custom_trashbin_path", custom_trashbin_path);
+
     const zlap_module = b.dependency("zlap", .{}).module("zlap");
 
     const exe = b.addExecutable(
@@ -46,6 +54,7 @@ pub fn build(b: *Build) !void {
     exe.root_module.addImport("zlap", zlap_module);
     exe.linkLibCpp();
     exe.addCSourceFile(.{ .file = b.path("./src/fileinfo.cc"), .flags = &cpp_flags });
+    exe.root_module.addOptions("xilo_build", exe_options);
     b.installArtifact(exe);
 
     const run_cmd = b.addRunArtifact(exe);

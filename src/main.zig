@@ -38,12 +38,10 @@ pub fn main() !u8 {
     }
 
     if (!is_show_space and !is_permanent and file_contents.len == 0) {
-        // zig fmt: off
-        const err_msg = ansi.@"error"
-            ++ "Error: " ++ ansi.reset ++ "there is no file/directory name to run this program.\n";
-        const note_msg = ansi.note
-            ++ "Note:  " ++ ansi.reset ++ "add files or directories to remove.\n\n";
-        // zig fmt: on
+        const err_msg = ansi.@"error" ++ "Error: " ++ ansi.reset ++
+            "there is no file/directory name to run this program.\n";
+        const note_msg = ansi.note ++ "Note:  " ++ ansi.reset ++
+            "add files or directories to remove.\n\n";
 
         std.debug.print(err_msg, .{});
         std.debug.print(note_msg, .{});
@@ -64,10 +62,12 @@ pub fn main() !u8 {
     remover.run() catch |err| {
         switch (err) {
             error.TryToRemoveDirectoryWithoutRecursiveFlag => {
-                // zig fmt: off
-                std.debug.print(ansi.@"error" ++ "Error: "
-                    ++ ansi.reset ++ "cannot remove a directory without `--recursive` flag\n", .{});
-                // zig fmt: on
+                std.debug.print(
+                    ansi.@"error" ++ "Error: " ++
+                        ansi.reset ++
+                        "cannot remove a directory without `--recursive` flag\n",
+                    .{},
+                );
             },
             else => return err,
         }

@@ -15,6 +15,8 @@ const addNullByte = std.cstr.addNullByte;
 const isAbsolute = fs.path.isAbsolute;
 const parseBytes = @import("./space_shower.zig").parseBytes;
 
+const custom_trashbin_path = @import("xilo_build").custom_trashbin_path;
+
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 const StaticStringMap = std.StaticStringMap;
@@ -85,10 +87,8 @@ pub fn run(self: Self) !void {
         const size_human_readable = try parseBytes(self.allocator, trashbin_size);
         defer size_human_readable.deinit();
 
-        // zig fmt: off
-        const msg_fmt = ansi.note
-            ++ "Note: " ++ ansi.reset ++ "The space of the current trashbin is {s}.\n";
-        // zig fmt: on
+        const msg_fmt = ansi.note ++ "Note: " ++ ansi.reset ++
+            "The space of the current trashbin is {s}.\n";
         try stdout.print(msg_fmt, .{size_human_readable.items});
     } else if (self.permanent) {
         return self.deletePermanently();
@@ -235,25 +235,29 @@ fn getTrashbinPath(allocator: Allocator) !ArrayList(u8) {
     var output = try ArrayList(u8).initCapacity(allocator, 150);
     errdefer output.deinit();
 
-    switch (builtin.os.tag) {
-        .linux => {
-            try output.appendSlice(std.posix.getenv("HOME").?);
-            try output.appendSlice("/.cache/xilo");
-        },
-        .macos => {
-            try output.appendSlice(std.posix.getenv("HOME").?);
-            try output.appendSlice("/.Trash");
-        },
-        .windows => {
-            const appdata_location = try process.getEnvVarOwned(
-                allocator,
-                "APPDATA",
-            );
-            defer allocator.free(appdata_location);
-            try output.appendSlice(appdata_location);
-            try output.appendSlice("\\xilo");
-        },
-        else => @compileError("only linux, macos and windows are supported"),
+    if (custom_trashbin_path) |trashbin_path| {
+        try output.appendSlice(trashbin_path);
+    } else {
+        switch (builtin.os.tag) {
+            .linux => {
+                try output.appendSlice(std.posix.getenv("HOME").?);
+                try output.appendSlice("/.cache/xilo");
+            },
+            .macos => {
+                try output.appendSlice(std.posix.getenv("HOME").?);
+                try output.appendSlice("/.Trash");
+            },
+            .windows => {
+                const appdata_location = try process.getEnvVarOwned(
+                    allocator,
+                    "APPDATA",
+                );
+                defer allocator.free(appdata_location);
+                try output.appendSlice(appdata_location);
+                try output.appendSlice("\\xilo");
+            },
+            else => @compileError("only linux, macos and windows are supported"),
+        }
     }
 
     return output;
