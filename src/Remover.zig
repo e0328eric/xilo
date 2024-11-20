@@ -85,10 +85,8 @@ pub fn run(self: Self) !void {
         const size_human_readable = try parseBytes(self.allocator, trashbin_size);
         defer size_human_readable.deinit();
 
-        // zig fmt: off
-        const msg_fmt = ansi.note
-            ++ "Note: " ++ ansi.reset ++ "The space of the current trashbin is {s}.\n";
-        // zig fmt: on
+        const msg_fmt = ansi.note ++ "Note: " ++ ansi.reset ++
+            "The space of the current trashbin is {s}.\n";
         try stdout.print(msg_fmt, .{size_human_readable.items});
     } else if (self.permanent) {
         return self.deletePermanently();

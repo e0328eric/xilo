@@ -53,24 +53,31 @@ pub fn getDirSize(outsize_allocator: Allocator, dir_path: []const u8) !u64 {
     var walker = try trashbin.walk(outsize_allocator);
     defer walker.deinit();
 
-    while (try walker.next()) |file_content| {
-        const absolute_file_path = file_content.dir.realpathAlloc(
-            allocator,
-            file_content.path,
-        ) catch |err| {
-            switch (err) {
-                // XXX: Why error.NotDir can occur?
-                error.FileNotFound, error.NotDir => continue,
-                else => return err,
-            }
+    while (true) {
+        const file_content = walker.next() catch |err| switch (err) {
+            error.NotDir, error.FileNotFound => continue,
+            else => return err,
         };
-        defer allocator.free(absolute_file_path);
 
-        const file_size = if (try isDir(absolute_file_path))
-            try getDirSize(outsize_allocator, absolute_file_path)
-        else
-            try getFileSize(absolute_file_path);
-        output +|= file_size;
+        if (file_content) |fc| {
+            const absolute_file_path = fc.dir.realpathAlloc(
+                allocator,
+                fc.path,
+            ) catch |err| {
+                switch (err) {
+                    // XXX: Why error.NotDir can occur?
+                    error.FileNotFound, error.NotDir => continue,
+                    else => return err,
+                }
+            };
+            defer allocator.free(absolute_file_path);
+
+            const file_size = if (try isDir(absolute_file_path))
+                try getDirSize(outsize_allocator, absolute_file_path)
+            else
+                try getFileSize(absolute_file_path);
+            output +|= file_size;
+        } else break;
     }
 
     return output;
