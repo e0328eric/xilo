@@ -4,8 +4,8 @@
     .paths = .{""},
     .dependencies = .{
         .zlap = .{
-            .url = "https://github.com/e0328eric/zlap/archive/refs/tags/v0.4.0.tar.gz",
-            .hash = "12203f3fd3172233e15558354b4ed502503780ff2e9669a880b04a8817b26b5d4f09",
+            .url = "https://github.com/e0328eric/zlap/archive/refs/tags/v0.5.0.tar.gz",
+            .hash = "12208f9d0f86b73257fd0502fa0e2e48e7aa5484aa4ce1d4ccf9e771bdadb97039e7",
         },
     },
 }

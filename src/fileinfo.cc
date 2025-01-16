@@ -16,7 +16,9 @@ extern "C" bool isDirRaw(const char* path, bool* result) {
     if (fs::symlink_status(path, errcode).type() == fs::file_type::symlink) {
         *result = false;
         if (errcode) {
-            std::cerr << "error (fileinfo.cc): " << errcode.message() << '\n';
+            std::cerr << "error (fileinfo.cc): "
+                << '[' << path << "] "
+                << errcode.message() << '\n';
             return false;
         }
         return true;
@@ -28,7 +30,9 @@ extern "C" bool isDirRaw(const char* path, bool* result) {
 
     *result = fs::symlink_status(path, errcode).type() == fs::file_type::directory;
     if (errcode) {
-        std::cerr << "error (fileinfo.cc): " << errcode.message() << '\n';
+        std::cerr << "error (fileinfo.cc): "
+            << '[' << path << "] "
+            << errcode.message() << '\n';
         return false;
     }
 
@@ -46,7 +50,9 @@ extern "C" bool fileSizeRaw(const char* path, uintmax_t* result) {
     *result = fs::file_size(path, errcode);
 
     if (errcode) {
-        std::cerr << "ERROR (fileinfo.cc): " << errcode.message() << '\n';
+        std::cerr << "error (fileinfo.cc): "
+            << '[' << path << "] "
+            << errcode.message() << '\n';
         return false;
     }
 
