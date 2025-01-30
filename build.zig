@@ -33,28 +33,31 @@ pub fn build(b: *Build) !void {
 
     const zlap_module = b.dependency("zlap", .{}).module("zlap");
 
-    const exe = b.addExecutable(
-        .{
-            .name = program_name,
-            .root_source_file = b.path("src/main.zig"),
-            .target = target,
-            .optimize = optimize,
-            .version = xilo_version,
-            .strip = switch (optimize) {
-                .Debug, .ReleaseSafe => false,
-                else => true,
-            },
+    const exe_mod = b.createModule(.{
+        .root_source_file = b.path("src/main.zig"),
+        .target = target,
+        .optimize = optimize,
+        .version = xilo_version,
+        .strip = switch (optimize) {
+            .Debug, .ReleaseSafe => false,
+            else => true,
         },
-    );
+        .link_libcpp = true,
+    });
     const cpp_flags = [_][]const u8{"-std=c++17"} ++ if (optimize == .Debug)
         [_][]const u8{"-DZIG_DEBUG_MODE"}
     else
         [_][]const u8{""};
+    exe_mod.addImport("zlap", zlap_module);
+    exe_mod.addOptions("xilo_build", exe_options);
+    exe_mod.addCSourceFile(.{ .file = b.path("./src/fileinfo.cc"), .flags = &cpp_flags });
 
-    exe.root_module.addImport("zlap", zlap_module);
-    exe.linkLibCpp();
-    exe.addCSourceFile(.{ .file = b.path("./src/fileinfo.cc"), .flags = &cpp_flags });
-    exe.root_module.addOptions("xilo_build", exe_options);
+    const exe = b.addExecutable(
+        .{
+            .name = program_name,
+            .root_module = exe_mod,
+        },
+    );
     b.installArtifact(exe);
 
     const run_cmd = b.addRunArtifact(exe);
