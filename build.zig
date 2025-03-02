@@ -2,7 +2,7 @@ const std = @import("std");
 const builtin = @import("builtin");
 
 const xilo_version = std.SemanticVersion.parse("0.6.0") catch unreachable;
-const min_zig_string = "0.14.0-dev.1637+8c232922b";
+const min_zig_string = "0.14.0-dev.3445+6c3cbb0c8";
 const program_name = "xilo";
 
 // NOTE: This code came from
@@ -37,7 +37,6 @@ pub fn build(b: *Build) !void {
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
-        .version = xilo_version,
         .strip = switch (optimize) {
             .Debug, .ReleaseSafe => false,
             else => true,
@@ -56,6 +55,7 @@ pub fn build(b: *Build) !void {
         .{
             .name = program_name,
             .root_module = exe_mod,
+            .version = xilo_version,
         },
     );
     b.installArtifact(exe);
