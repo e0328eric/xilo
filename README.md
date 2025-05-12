@@ -19,3 +19,4 @@ Recommended `<install path>` is `~/.local/bin`, so run this makes `xilo` to move
 ```console
 $ zig run install -prefix-exe-dir ~/.local/bin -Doptimize=ReleaseSafe
 ```
+
