@@ -21,6 +21,7 @@ const XiloError = error{
     TryToRemoveDirectoryWithoutRecursiveFlag,
     FailedToRemoveFile,
     FailedToEmptyTrashbin,
+    FailedToGetTrashbinSize,
 };
 
 // fields for Remover
@@ -73,22 +74,8 @@ fn showTrashbinSpace(self: Self) !void {
     var trashbin_info: win.SHQUERYRBINFO = undefined;
     const hr = win.SHQueryRecycleBinW(null, &trashbin_info);
     if (win.FAILED(hr)) {
-        const errno = win.GetLastError();
-        const buf = try self.allocator.alloc(u16, 255);
-        defer self.allocator.free(buf);
-
-        const buf_len = win.FormatMessageW(
-            win.FORMAT_MESSAGE_FROM_SYSTEM,
-            null,
-            errno,
-            win.MAKELANGID(win.LANG_NEUTRAL, win.SUBLANG_DEFAULT),
-            buf.ptr,
-            255,
-            null,
-        );
-
-        const msg = try unicode.utf16LeToUtf8Alloc(self.allocator, buf[0..buf_len]);
-        defer self.allocator.free(msg);
+        try printError(self.allocator);
+        return error.FailedToGetTrashbinSize;
     }
 
     const size_human_readable = try parseBytes(
@@ -124,6 +111,7 @@ fn delete(self: Self) !void {
         shf.fFlags = win.FOF_ALLOWUNDO | win.FOF_NOCONFIRMATION | win.FOF_SILENT;
 
         if (win.SHFileOperationW(&shf) != 0) {
+            try printError(self.allocator);
             return error.FailedToRemoveFile;
         }
     }
@@ -141,6 +129,7 @@ fn deletePermanently(self: Self) !void {
 
         const dw_flag = win.SHERB_NOCONFIRMATION | win.SHERB_NOSOUND;
         if (win.FAILED(win.SHEmptyRecycleBinW(null, null, dw_flag))) {
+            try printError(self.allocator);
             return error.FailedToEmptyTrashbin;
         }
 
@@ -189,4 +178,28 @@ fn deletePermanently(self: Self) !void {
             };
         }
     }
+}
+
+fn printError(allocator: Allocator) !void {
+    const errno = win.GetLastError();
+    const buf = try allocator.alloc(u16, 255);
+    defer allocator.free(buf);
+
+    const buf_len = win.FormatMessageW(
+        win.FORMAT_MESSAGE_FROM_SYSTEM,
+        null,
+        errno,
+        win.MAKELANGID(win.LANG_NEUTRAL, win.SUBLANG_DEFAULT),
+        buf.ptr,
+        255,
+        null,
+    );
+
+    const msg = try unicode.utf16LeToUtf8Alloc(allocator, buf[0..buf_len]);
+    defer allocator.free(msg);
+
+    std.debug.print(
+        ansi.@"error" ++ "Error:" ++ ansi.reset ++ "{s}\n",
+        .{msg},
+    );
 }
