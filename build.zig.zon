@@ -1,6 +1,6 @@
 .{
     .name = .xilo,
-    .version = "0.6.0",
+    .version = "0.7.0",
     .fingerprint = 0xdc8cffa2ab80660f,
     .paths = .{""},
     .dependencies = .{

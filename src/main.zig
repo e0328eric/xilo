@@ -1,7 +1,12 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const heap = std.heap;
 const ansi = @import("./ansi.zig");
-const Remover = @import("./Remover.zig");
+const Remover = switch (builtin.os.tag) {
+    .windows => @import("./Remover/windows.zig"),
+    .linux, .macos => @import("./Remover/posix.zig"),
+    else => @compileError("only linux, macos and windows are supported"),
+};
 const Zlap = @import("zlap").Zlap;
 
 pub fn main() !u8 {

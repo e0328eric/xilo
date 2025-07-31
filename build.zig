@@ -33,6 +33,17 @@ pub fn build(b: *Build) !void {
 
     const zlap_module = b.dependency("zlap", .{}).module("zlap");
 
+    const win_zig_trans_c = b.addTranslateC(.{
+        .root_source_file = b.path("./src/winzig.h"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const win_zig = b.createModule(.{
+        .root_source_file = win_zig_trans_c.getOutput(),
+        .target = target,
+        .optimize = optimize,
+    });
+
     const exe_mod = b.createModule(.{
         .root_source_file = b.path("src/main.zig"),
         .target = target,
@@ -42,14 +53,20 @@ pub fn build(b: *Build) !void {
             else => true,
         },
         .link_libcpp = true,
+        .imports = &.{
+            .{ .name = "zlap", .module = zlap_module },
+            .{ .name = "windows", .module = win_zig },
+        },
     });
     const cpp_flags = [_][]const u8{"-std=c++17"} ++ if (optimize == .Debug)
         [_][]const u8{"-DZIG_DEBUG_MODE"}
     else
         [_][]const u8{""};
-    exe_mod.addImport("zlap", zlap_module);
     exe_mod.addOptions("xilo_build", exe_options);
-    exe_mod.addCSourceFile(.{ .file = b.path("./src/fileinfo.cc"), .flags = &cpp_flags });
+    exe_mod.addCSourceFile(.{
+        .file = b.path("./src/fileinfo.cc"),
+        .flags = &cpp_flags,
+    });
 
     const exe = b.addExecutable(
         .{

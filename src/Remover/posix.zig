@@ -1,7 +1,6 @@
 const std = @import("std");
-const builtin = @import("builtin");
-const ansi = @import("./ansi.zig");
-const fileinfo = @import("./fileinfo.zig");
+const ansi = @import("../ansi.zig");
+const fileinfo = @import("../fileinfo.zig");
 const base64 = std.base64;
 const fmt = std.fmt;
 const fs = std.fs;
@@ -13,25 +12,17 @@ const time = std.time;
 
 const addNullByte = std.cstr.addNullByte;
 const isAbsolute = fs.path.isAbsolute;
-const parseBytes = @import("./space_shower.zig").parseBytes;
+const parseBytes = @import("../space_shower.zig").parseBytes;
+const handleYesNo = @import("../input_handler.zig").handleYesNo;
 
 const custom_trashbin_path = @import("xilo_build").custom_trashbin_path;
 
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
-const StaticStringMap = std.StaticStringMap;
 
 const XiloError = error{
     TryToRemoveDirectoryWithoutRecursiveFlag,
 };
-
-const yesValue = StaticStringMap(void).initComptime(.{
-    .{ "y", void },
-    .{ "Y", void },
-    .{ "yes", void },
-    .{ "Yes", void },
-    .{ "YES", void },
-});
 
 // fields for Remover
 allocator: Allocator,
@@ -98,23 +89,11 @@ pub fn run(self: Self) !void {
 }
 
 fn delete(self: Self) !void {
-    const stdout = std.io.getStdOut().writer();
     for (self.file_contents) |filename| {
         if (!self.force) {
             const msg_fmt = ansi.warn ++ "Warn: " ++
                 ansi.reset ++ "Are you sure to remove `{s}`? (y/N): ";
-            try stdout.print(msg_fmt, .{filename});
-
-            const stdin = io.getStdIn().reader();
-            const data = try stdin.readUntilDelimiterAlloc(self.allocator, '\n', 4096);
-            defer self.allocator.free(data);
-
-            // Since windows uses CRLF for EOL, we should trim \r character.
-            if (builtin.os.tag == .windows) {
-                if (!yesValue.has(mem.trimRight(u8, data, "\r"))) return;
-            } else {
-                if (!yesValue.has(data)) return;
-            }
+            if (!(try handleYesNo(self.allocator, msg_fmt, .{filename}))) return;
         }
 
         if (try fileinfo.isDir(filename) and !self.recursive) {
@@ -125,7 +104,7 @@ fn delete(self: Self) !void {
         if (isAbsolute(filename)) {
             mangled_name = try self.nameMangling(true, filename);
             defer mangled_name.deinit();
-            try @import("./rename.zig").renameAbsolute(
+            try @import("../rename.zig").renameAbsolute(
                 self.allocator,
                 filename,
                 mangled_name.items,
@@ -133,7 +112,7 @@ fn delete(self: Self) !void {
         } else {
             mangled_name = try self.nameMangling(false, filename);
             defer mangled_name.deinit();
-            try @import("./rename.zig").rename(
+            try @import("../rename.zig").rename(
                 self.allocator,
                 fs.cwd(),
                 filename,
@@ -145,22 +124,14 @@ fn delete(self: Self) !void {
 }
 
 fn deletePermanently(self: Self) !void {
-    const stdout = std.io.getStdOut().writer();
     if (self.file_contents.len == 0) {
         const msg_fmt = ansi.warn ++ "Warn: " ++
             ansi.reset ++ "Are you sure to empty the trashbin? (y/N): ";
-        try stdout.print(msg_fmt, .{});
-
-        const stdin = io.getStdIn().reader();
-        const data = try stdin.readUntilDelimiterAlloc(self.allocator, '\n', 4096);
-        defer self.allocator.free(data);
-
-        // Since windows uses CRLF for EOL, we should trim \r character.
-        if (builtin.os.tag == .windows) {
-            if (!yesValue.has(mem.trimRight(u8, data, "\r"))) return;
-        } else {
-            if (!yesValue.has(data)) return;
-        }
+        const really_msg_fmt = ansi.warn ++ "Warn: " ++
+            ansi.reset ++ "Are you " ++ ansi.bold ++ "really" ++
+            ansi.reset ++ " sure to empty the trashbin? (y/N): ";
+        if (!(try handleYesNo(self.allocator, msg_fmt, .{}))) return;
+        if (!(try handleYesNo(self.allocator, really_msg_fmt, .{}))) return;
 
         var dir_iter = try self.trashbin_dir.openDir(".", .{ .iterate = true });
         defer dir_iter.close();
@@ -184,20 +155,11 @@ fn deletePermanently(self: Self) !void {
                 " " ** 6 ++ "Are you sure to remove this? (y/N): ";
 
             if (try fileinfo.isDir(filename)) {
-                try stdout.print(dir_msg_fmt, .{filename});
+                if (!(try handleYesNo(self.allocator, dir_msg_fmt, .{filename})))
+                    return;
             } else {
-                try stdout.print(file_msg_fmt, .{filename});
-            }
-
-            const stdin = io.getStdIn().reader();
-            const data = try stdin.readUntilDelimiterAlloc(self.allocator, '\n', 4096);
-            defer self.allocator.free(data);
-
-            // Since windows uses CRLF for EOL, we should trim \r character.
-            if (builtin.os.tag == .windows) {
-                if (!yesValue.has(mem.trimRight(u8, data, "\r"))) return;
-            } else {
-                if (!yesValue.has(data)) return;
+                if (!(try handleYesNo(self.allocator, file_msg_fmt, .{filename})))
+                    return;
             }
         }
 
@@ -238,7 +200,7 @@ fn getTrashbinPath(allocator: Allocator) !ArrayList(u8) {
     if (custom_trashbin_path) |trashbin_path| {
         try output.appendSlice(trashbin_path);
     } else {
-        switch (builtin.os.tag) {
+        switch (@import("builtin").os.tag) {
             .linux => {
                 try output.appendSlice(std.posix.getenv("HOME").?);
                 try output.appendSlice("/.cache/xilo");
@@ -246,15 +208,6 @@ fn getTrashbinPath(allocator: Allocator) !ArrayList(u8) {
             .macos => {
                 try output.appendSlice(std.posix.getenv("HOME").?);
                 try output.appendSlice("/.Trash");
-            },
-            .windows => {
-                const appdata_location = try process.getEnvVarOwned(
-                    allocator,
-                    "APPDATA",
-                );
-                defer allocator.free(appdata_location);
-                try output.appendSlice(appdata_location);
-                try output.appendSlice("\\xilo");
             },
             else => @compileError("only linux, macos and windows are supported"),
         }

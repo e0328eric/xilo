@@ -46,3 +46,4 @@ pub const reset = makeAnsi(null, .Reset);
 pub const @"error" = makeAnsi(.Red, .Bold);
 pub const warn = makeAnsi(.Magenta, .Bold);
 pub const note = makeAnsi(.Cyan, .Bold);
+pub const bold = makeAnsi(null, .Bold);
