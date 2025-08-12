@@ -111,7 +111,7 @@ fn delete(self: Self) !void {
         shf.fFlags = win.FOF_ALLOWUNDO | win.FOF_NOCONFIRMATION | win.FOF_SILENT;
 
         const errno = win.SHFileOperationW(&shf);
-        if (shf.fAnyOperationsAborted == win.FALSE) {
+        if (errno != 0) {
             try printError(self.allocator, @intCast(errno));
             return error.FailedToRemoveFile;
         }
