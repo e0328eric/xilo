@@ -74,7 +74,7 @@ fn showTrashbinSpace(self: Self) !void {
     var trashbin_info: win.SHQUERYRBINFO = undefined;
     const hr = win.SHQueryRecycleBinW(null, &trashbin_info);
     if (win.FAILED(hr)) {
-        try printError(self.allocator);
+        try printError(self.allocator, win.GetLastError());
         return error.FailedToGetTrashbinSize;
     }
 
@@ -110,8 +110,9 @@ fn delete(self: Self) !void {
         shf.pFrom = filename_z.ptr;
         shf.fFlags = win.FOF_ALLOWUNDO | win.FOF_NOCONFIRMATION | win.FOF_SILENT;
 
-        if (win.SHFileOperationW(&shf) != 0) {
-            try printError(self.allocator);
+        const errno = win.SHFileOperationW(&shf);
+        if (shf.fAnyOperationsAborted == win.FALSE) {
+            try printError(self.allocator, @intCast(errno));
             return error.FailedToRemoveFile;
         }
     }
@@ -129,7 +130,7 @@ fn deletePermanently(self: Self) !void {
 
         const dw_flag = win.SHERB_NOCONFIRMATION | win.SHERB_NOSOUND;
         if (win.FAILED(win.SHEmptyRecycleBinW(null, null, dw_flag))) {
-            try printError(self.allocator);
+            try printError(self.allocator, win.GetLastError());
             return error.FailedToEmptyTrashbin;
         }
 
@@ -180,8 +181,7 @@ fn deletePermanently(self: Self) !void {
     }
 }
 
-fn printError(allocator: Allocator) !void {
-    const errno = win.GetLastError();
+fn printError(allocator: Allocator, errno: win.DWORD) !void {
     const buf = try allocator.alloc(u16, 255);
     defer allocator.free(buf);
 
@@ -199,7 +199,7 @@ fn printError(allocator: Allocator) !void {
     defer allocator.free(msg);
 
     std.debug.print(
-        ansi.@"error" ++ "Error:" ++ ansi.reset ++ "{s}\n",
+        ansi.@"error" ++ "Error: " ++ ansi.reset ++ "{s}\n",
         .{msg},
     );
 }
