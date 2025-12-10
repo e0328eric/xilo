@@ -15,16 +15,17 @@ const yesValue = StaticStringMap(void).initComptime(.{
 });
 
 pub fn handleYesNo(
-    allocator: Allocator,
     comptime fmt_str: []const u8,
     args: anytype,
 ) !bool {
-    const stdout = io.getStdOut().writer();
-    try stdout.print(fmt_str, args);
+    var writer_buf: [1024]u8 = undefined;
+    var stdout = std.fs.File.stdout().writer(&writer_buf);
+    try stdout.interface.print(fmt_str, args);
+    try stdout.end();
 
-    const stdin = io.getStdIn().reader();
-    const data = try stdin.readUntilDelimiterAlloc(allocator, '\n', 4096);
-    defer allocator.free(data);
+    var reader_buf: [4096]u8 = undefined;
+    var stdin = std.fs.File.stdin().reader(&reader_buf);
+    const data = try stdin.interface.takeDelimiterExclusive('\n');
 
     // Since windows uses CRLF for EOL, we should trim \r character.
     return if (builtin.os.tag == .windows)

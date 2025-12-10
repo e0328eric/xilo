@@ -112,16 +112,18 @@ fn renameAcrossMountPointsFiles(
     const file_moveinto = try new_dir.createFile(new_subpath, .{});
     defer file_moveinto.close();
 
-    var buffer_movefrom = io.bufferedReader(file_movefrom.reader());
-    var buffer_moveinto = io.bufferedWriter(file_moveinto.writer());
+    var reader_buf: [4096]u8 = undefined;
+    var writer_buf: [4096]u8 = undefined;
+    var buffer_movefrom = file_movefrom.reader(&reader_buf);
+    var buffer_moveinto = file_moveinto.writer(&writer_buf);
 
     var buf = [_]u8{0} ** 4096;
     while (true) {
-        const bytes_read = try buffer_movefrom.read(&buf);
-        const bytes_writtten = try buffer_moveinto.writer().write(buf[0..bytes_read]);
+        const bytes_read = try buffer_movefrom.interface.readSliceShort(&buf);
+        const bytes_writtten = try buffer_moveinto.interface.write(buf[0..bytes_read]);
         if (bytes_writtten == 0) break;
     }
-    try buffer_moveinto.flush();
+    try buffer_moveinto.end();
 
     // all contents are copied. can close the file_movefrom
     file_movefrom.close();

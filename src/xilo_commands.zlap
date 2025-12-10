@@ -1,1 +1,7 @@
-{#main;#name:xilo;#desc:A simple replacement of "rm" command;#arg;meta:FILES;desc:Files or directories to remove;type:strings;default:;#flag;long:recursive;short:r;desc:Remove directory recursively;type:bool;default:false;#flag;long:force;short:f;desc:Force to delete files/directories;type:bool;default:false;#flag;long:permanent;short:p;desc:Empty the trashbin if FILES is empty. Otherwise, delete contents unrecoverably;type:bool;default:false;#flag;long:show_space;short:s;desc:Show the trashbin space;type:bool;default:false;}
+#@xilo | A simple replacement of "rm" command {
+    *FILES : strings | files or directories to remove;
+    -recursive,r := @false | remove directory recursively;
+    -force,f := @false | force to delete files/directories;
+    -permanent,p := @false | empty the trashbin if FILES is empty. Otherwise, delete contents unrecoverably;
+    -show_space,s := @false | show the trashbin space;
+}

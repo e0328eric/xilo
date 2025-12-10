@@ -13,9 +13,7 @@ const EXABYTE: u64 = powi(u64, 10, 18) catch unreachable;
 
 pub fn parseBytes(allocator: Allocator, bytes: u64) !ArrayList(u8) {
     var output = try ArrayList(u8).initCapacity(allocator, 50);
-    errdefer output.deinit();
-
-    var writer = output.writer();
+    errdefer output.deinit(allocator);
 
     const exabyte = @divTrunc(bytes, EXABYTE);
     const petabyte = @divTrunc(@rem(bytes, EXABYTE), PETABYTE);
@@ -30,15 +28,20 @@ pub fn parseBytes(allocator: Allocator, bytes: u64) !ArrayList(u8) {
     }
 
     if (bytes < KILOBYTE) {
-        try writer.print("{}B", .{byte});
+        try output.print(allocator, "{}B", .{byte});
     } else if (bytes < MEGABYTE) {
-        try writer.print("{}K {}B", .{ kilobyte, byte });
+        try output.print(allocator, "{}K {}B", .{ kilobyte, byte });
     } else if (bytes < GIGABYTE) {
-        try writer.print("{}M {}K {}B", .{ megabyte, kilobyte, byte });
+        try output.print(allocator, "{}M {}K {}B", .{ megabyte, kilobyte, byte });
     } else if (bytes < TERABYTE) {
-        try writer.print("{}G {}M {}K {}B", .{ gigabyte, megabyte, kilobyte, byte });
+        try output.print(allocator, "{}G {}M {}K {}B", .{
+            gigabyte,
+            megabyte,
+            kilobyte,
+            byte,
+        });
     } else {
-        try writer.print("{}E {}P {}T {}G {}M {}K {}B", .{
+        try output.print(allocator, "{}E {}P {}T {}G {}M {}K {}B", .{
             exabyte,
             petabyte,
             terabyte,

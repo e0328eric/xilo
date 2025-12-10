@@ -7,14 +7,13 @@ const Remover = switch (builtin.os.tag) {
     .linux, .macos => @import("./Remover/posix.zig"),
     else => @compileError("only linux, macos and windows are supported"),
 };
-const Zlap = @import("zlap").Zlap;
 
 pub fn main() !u8 {
     var arena = std.heap.ArenaAllocator.init(heap.c_allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    var zlap = try Zlap(@embedFile("./xilo_commands.zlap")).init(allocator);
+    var zlap = try @import("zlap").Zlap(@embedFile("./xilo_commands.zlap"), null).init(allocator);
     defer zlap.deinit();
 
     // Datas from command line argument
@@ -37,8 +36,9 @@ pub fn main() !u8 {
     };
 
     if (zlap.is_help) {
-        const stdout = std.io.getStdOut().writer();
-        try stdout.print("{s}\n", .{zlap.help_msg});
+        var buf: [1024]u8 = undefined;
+        var stdout = std.fs.File.stdout().writer(&buf);
+        try stdout.interface.print("{s}\n", .{zlap.help_msg});
         return 1;
     }
 

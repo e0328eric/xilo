@@ -45,8 +45,8 @@ pub fn init(
     show_space: bool,
     file_contents: []const []const u8,
 ) !Self {
-    const trashbin_path = try getTrashbinPath(allocator);
-    errdefer trashbin_path.deinit();
+    var trashbin_path = try getTrashbinPath(allocator);
+    errdefer trashbin_path.deinit(allocator);
 
     std.fs.makeDirAbsolute(trashbin_path.items) catch |err| {
         switch (err) {
@@ -72,15 +72,18 @@ pub fn deinit(self: *Self) void {
 }
 
 pub fn run(self: Self) !void {
-    const stdout = std.io.getStdOut().writer();
     if (self.show_space) {
+        var buf: [1024]u8 = undefined;
+        var stdout = std.fs.File.stdout().writer(&buf);
+
         const trashbin_size = try self.getTrashbinSize();
-        const size_human_readable = try parseBytes(self.allocator, trashbin_size);
-        defer size_human_readable.deinit();
+        var size_human_readable = try parseBytes(self.allocator, trashbin_size);
+        defer size_human_readable.deinit(self.allocator);
 
         const msg_fmt = ansi.note ++ "Note: " ++ ansi.reset ++
             "The space of the current trashbin is {s}.\n";
-        try stdout.print(msg_fmt, .{size_human_readable.items});
+        try stdout.interface.print(msg_fmt, .{size_human_readable.items});
+        try stdout.end();
     } else if (self.permanent) {
         return self.deletePermanently();
     } else {
@@ -93,7 +96,7 @@ fn delete(self: Self) !void {
         if (!self.force) {
             const msg_fmt = ansi.warn ++ "Warn: " ++
                 ansi.reset ++ "Are you sure to remove `{s}`? (y/N): ";
-            if (!(try handleYesNo(self.allocator, msg_fmt, .{filename}))) return;
+            if (!(try handleYesNo(msg_fmt, .{filename}))) return;
         }
 
         if (try fileinfo.isDir(filename) and !self.recursive) {
@@ -103,7 +106,7 @@ fn delete(self: Self) !void {
         var mangled_name: ArrayList(u8) = undefined;
         if (isAbsolute(filename)) {
             mangled_name = try self.nameMangling(true, filename);
-            defer mangled_name.deinit();
+            defer mangled_name.deinit(self.allocator);
             try @import("../rename.zig").renameAbsolute(
                 self.allocator,
                 filename,
@@ -111,7 +114,7 @@ fn delete(self: Self) !void {
             );
         } else {
             mangled_name = try self.nameMangling(false, filename);
-            defer mangled_name.deinit();
+            defer mangled_name.deinit(self.allocator);
             try @import("../rename.zig").rename(
                 self.allocator,
                 fs.cwd(),
@@ -130,8 +133,8 @@ fn deletePermanently(self: Self) !void {
         const really_msg_fmt = ansi.warn ++ "Warn: " ++
             ansi.reset ++ "Are you " ++ ansi.bold ++ "really" ++
             ansi.reset ++ " sure to empty the trashbin? (y/N): ";
-        if (!(try handleYesNo(self.allocator, msg_fmt, .{}))) return;
-        if (!(try handleYesNo(self.allocator, really_msg_fmt, .{}))) return;
+        if (!(try handleYesNo(msg_fmt, .{}))) return;
+        if (!(try handleYesNo(really_msg_fmt, .{}))) return;
 
         var dir_iter = try self.trashbin_dir.openDir(".", .{ .iterate = true });
         defer dir_iter.close();
@@ -155,10 +158,10 @@ fn deletePermanently(self: Self) !void {
                 " " ** 6 ++ "Are you sure to remove this? (y/N): ";
 
             if (try fileinfo.isDir(filename)) {
-                if (!(try handleYesNo(self.allocator, dir_msg_fmt, .{filename})))
+                if (!(try handleYesNo(dir_msg_fmt, .{filename})))
                     return;
             } else {
-                if (!(try handleYesNo(self.allocator, file_msg_fmt, .{filename})))
+                if (!(try handleYesNo(file_msg_fmt, .{filename})))
                     return;
             }
         }
@@ -195,19 +198,19 @@ fn getTrashbinSize(self: Self) !u64 {
 
 fn getTrashbinPath(allocator: Allocator) !ArrayList(u8) {
     var output = try ArrayList(u8).initCapacity(allocator, 150);
-    errdefer output.deinit();
+    errdefer output.deinit(allocator);
 
     if (custom_trashbin_path) |trashbin_path| {
         try output.appendSlice(trashbin_path);
     } else {
         switch (@import("builtin").os.tag) {
             .linux => {
-                try output.appendSlice(std.posix.getenv("HOME").?);
-                try output.appendSlice("/.cache/xilo");
+                try output.appendSlice(allocator, std.posix.getenv("HOME").?);
+                try output.appendSlice(allocator, "/.cache/xilo");
             },
             .macos => {
-                try output.appendSlice(std.posix.getenv("HOME").?);
-                try output.appendSlice("/.Trash");
+                try output.appendSlice(allocator, std.posix.getenv("HOME").?);
+                try output.appendSlice(allocator, "/.Trash");
             },
             else => @compileError("only linux, macos and windows are supported"),
         }
@@ -222,8 +225,7 @@ fn nameMangling(
     filename: []const u8,
 ) !ArrayList(u8) {
     var output = try ArrayList(u8).initCapacity(self.allocator, 200);
-    errdefer output.deinit();
-    var writer = output.writer();
+    errdefer output.deinit(self.allocator);
 
     const basename = fs.path.basename(filename);
 
@@ -243,13 +245,13 @@ fn nameMangling(
     const hashed_string = base64_encoder.encode(&base64_buf, path_hash);
 
     if (is_absolute) {
-        try writer.print("{s}/{s}!{s}", .{
+        try output.print(self.allocator, "{s}/{s}!{s}", .{
             self.trashbin_path.items,
             basename,
             hashed_string,
         });
     } else {
-        try writer.print("{s}!{s}", .{ basename, hashed_string });
+        try output.print(self.allocator, "{s}!{s}", .{ basename, hashed_string });
     }
 
     return output;
