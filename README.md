@@ -5,6 +5,7 @@ The origin of this program name comes from the greek word `ξήλωμα` which m
 # How to install
 
 ## Use precompiled binary
+One need zig 0.15.2.
 Download binary from `Releases`. All binaries are compiled into `ReleaseSmall` optimize.
 
 ## Build from source
@@ -19,4 +20,5 @@ Recommended `<install path>` is `~/.local/bin`, so run this makes `xilo` to move
 ```console
 $ zig run install -prefix-exe-dir ~/.local/bin -Doptimize=ReleaseSafe
 ```
+
 
