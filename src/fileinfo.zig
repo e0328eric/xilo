@@ -1,16 +1,16 @@
 const std = @import("std");
-const fs = std.fs;
 
 const Allocator = std.mem.Allocator;
 const FixedBufferAllocator = std.heap.FixedBufferAllocator;
+const Io = std.Io;
 
 // Fixed Size Allocator
 var buf = [_]u8{0} ** 4096;
 var fixed_allocator = FixedBufferAllocator.init(&buf);
 const allocator = fixed_allocator.allocator();
 
-extern "C" fn isDirRaw(path: [*c]const u8, result: ?*bool) bool;
-extern "C" fn fileSizeRaw(path: [*c]const u8, result: ?*u64) bool;
+extern "c" fn isDirRaw(path: [*c]const u8, result: ?*bool) bool;
+extern "c" fn fileSizeRaw(path: [*c]const u8, result: ?*u64) bool;
 
 const FileInfoError = error{
     CannotGetFileInfo,
@@ -45,24 +45,33 @@ pub fn getFileSize(path: []const u8) !u64 {
     return result;
 }
 
-pub fn getDirSize(outsize_allocator: Allocator, dir_path: []const u8) !u64 {
+pub fn getDirSize(
+    outsize_allocator: Allocator,
+    io: Io,
+    dir_path: []const u8,
+) !u64 {
     var output: u64 = 0;
-    var trashbin = try fs.openDirAbsolute(dir_path, .{ .iterate = true });
-    defer trashbin.close();
+    var trashbin = try Io.Dir.openDirAbsolute(
+        io,
+        dir_path,
+        .{ .iterate = true },
+    );
+    defer trashbin.close(io);
 
     var walker = try trashbin.walk(outsize_allocator);
     defer walker.deinit();
 
     while (true) {
-        const file_content = walker.next() catch |err| switch (err) {
+        const file_content = walker.next(io) catch |err| switch (err) {
             error.NotDir, error.FileNotFound => continue,
             else => return err,
         };
 
         if (file_content) |fc| {
-            const absolute_file_path = fc.dir.realpathAlloc(
-                allocator,
+            const absolute_file_path = fc.dir.realPathFileAlloc(
+                io,
                 fc.path,
+                allocator,
             ) catch |err| {
                 switch (err) {
                     // XXX: Why error.NotDir can occur?
@@ -73,7 +82,7 @@ pub fn getDirSize(outsize_allocator: Allocator, dir_path: []const u8) !u64 {
             defer allocator.free(absolute_file_path);
 
             const file_size = if (try isDir(absolute_file_path))
-                try getDirSize(outsize_allocator, absolute_file_path)
+                try getDirSize(outsize_allocator, io, absolute_file_path)
             else
                 try getFileSize(absolute_file_path);
             output +|= file_size;

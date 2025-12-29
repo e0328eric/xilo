@@ -4,7 +4,6 @@ const fileinfo = @import("../fileinfo.zig");
 const base64 = std.base64;
 const fmt = std.fmt;
 const fs = std.fs;
-const io = std.io;
 const math = std.math;
 const mem = std.mem;
 const process = std.process;
@@ -19,6 +18,7 @@ const custom_trashbin_path = @import("xilo_build").custom_trashbin_path;
 
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
+const Io = std.Io;
 
 const XiloError = error{
     TryToRemoveDirectoryWithoutRecursiveFlag,
@@ -26,8 +26,9 @@ const XiloError = error{
 
 // fields for Remover
 allocator: Allocator,
+io: Io,
 trashbin_path: ArrayList(u8),
-trashbin_dir: fs.Dir,
+trashbin_dir: Io.Dir,
 recursive: bool,
 force: bool,
 permanent: bool,
@@ -39,6 +40,7 @@ const Self = @This();
 
 pub fn init(
     allocator: Allocator,
+    io: Io,
     recursive: bool,
     force: bool,
     permanent: bool,
@@ -48,7 +50,7 @@ pub fn init(
     var trashbin_path = try getTrashbinPath(allocator);
     errdefer trashbin_path.deinit(allocator);
 
-    std.fs.makeDirAbsolute(trashbin_path.items) catch |err| {
+    Io.Dir.createDirAbsolute(io, trashbin_path.items, .default_dir) catch |err| {
         switch (err) {
             error.PathAlreadyExists => {},
             else => return err,
@@ -57,8 +59,9 @@ pub fn init(
 
     return .{
         .allocator = allocator,
+        .io = io,
         .trashbin_path = trashbin_path,
-        .trashbin_dir = try fs.openDirAbsolute(trashbin_path.items, .{}),
+        .trashbin_dir = try Io.Dir.openDirAbsolute(io, trashbin_path.items, .{}),
         .recursive = recursive,
         .force = force,
         .permanent = permanent,
@@ -68,13 +71,13 @@ pub fn init(
 }
 
 pub fn deinit(self: *Self) void {
-    self.trashbin_dir.close();
+    self.trashbin_dir.close(self.io);
 }
 
 pub fn run(self: Self) !void {
     if (self.show_space) {
         var buf: [1024]u8 = undefined;
-        var stdout = std.fs.File.stdout().writer(&buf);
+        var stdout = Io.File.stdout().writer(self.io, &buf);
 
         const trashbin_size = try self.getTrashbinSize();
         var size_human_readable = try parseBytes(self.allocator, trashbin_size);
@@ -96,7 +99,7 @@ fn delete(self: Self) !void {
         if (!self.force) {
             const msg_fmt = ansi.warn ++ "Warn: " ++
                 ansi.reset ++ "Are you sure to remove `{s}`? (y/N): ";
-            if (!(try handleYesNo(msg_fmt, .{filename}))) return;
+            if (!(try handleYesNo(self.io, msg_fmt, .{filename}))) return;
         }
 
         if (try fileinfo.isDir(filename) and !self.recursive) {
@@ -108,6 +111,7 @@ fn delete(self: Self) !void {
             mangled_name = try self.nameMangling(true, filename);
             defer mangled_name.deinit(self.allocator);
             try @import("../rename.zig").renameAbsolute(
+                self.io,
                 self.allocator,
                 filename,
                 mangled_name.items,
@@ -116,8 +120,9 @@ fn delete(self: Self) !void {
             mangled_name = try self.nameMangling(false, filename);
             defer mangled_name.deinit(self.allocator);
             try @import("../rename.zig").rename(
+                self.io,
                 self.allocator,
-                fs.cwd(),
+                Io.Dir.cwd(),
                 filename,
                 self.trashbin_dir,
                 mangled_name.items,
@@ -133,16 +138,20 @@ fn deletePermanently(self: Self) !void {
         const really_msg_fmt = ansi.warn ++ "Warn: " ++
             ansi.reset ++ "Are you " ++ ansi.bold ++ "really" ++
             ansi.reset ++ " sure to empty the trashbin? (y/N): ";
-        if (!(try handleYesNo(msg_fmt, .{}))) return;
-        if (!(try handleYesNo(really_msg_fmt, .{}))) return;
+        if (!(try handleYesNo(self.io, msg_fmt, .{}))) return;
+        if (!(try handleYesNo(self.io, really_msg_fmt, .{}))) return;
 
-        var dir_iter = try self.trashbin_dir.openDir(".", .{ .iterate = true });
-        defer dir_iter.close();
+        var dir_iter = try self.trashbin_dir.openDir(
+            self.io,
+            ".",
+            .{ .iterate = true },
+        );
+        defer dir_iter.close(self.io);
         var walker = try dir_iter.walk(self.allocator);
         defer walker.deinit();
 
-        while (try walker.next()) |entry| {
-            try self.trashbin_dir.deleteTree(entry.path);
+        while (try walker.next(self.io)) |entry| {
+            try self.trashbin_dir.deleteTree(self.io, entry.path);
         }
 
         return;
@@ -158,32 +167,32 @@ fn deletePermanently(self: Self) !void {
                 " " ** 6 ++ "Are you sure to remove this? (y/N): ";
 
             if (try fileinfo.isDir(filename)) {
-                if (!(try handleYesNo(dir_msg_fmt, .{filename})))
+                if (!(try handleYesNo(self.io, dir_msg_fmt, .{filename})))
                     return;
             } else {
-                if (!(try handleYesNo(file_msg_fmt, .{filename})))
+                if (!(try handleYesNo(self.io, file_msg_fmt, .{filename})))
                     return;
             }
         }
 
         if (isAbsolute(filename)) {
-            fs.deleteFileAbsolute(filename) catch |err| {
+            Io.Dir.deleteFileAbsolute(self.io, filename) catch |err| {
                 switch (err) {
                     error.IsDir => {
                         if (!self.recursive)
                             return error.TryToRemoveDirectoryWithoutRecursiveFlag;
-                        try fs.deleteTreeAbsolute(filename);
+                        try Io.Dir.cwd().deleteTree(self.io, filename);
                     },
                     else => return err,
                 }
             };
         } else {
-            fs.cwd().deleteFile(filename) catch |err| {
+            Io.Dir.cwd().deleteFile(self.io, filename) catch |err| {
                 switch (err) {
                     error.IsDir => {
                         if (!self.recursive)
                             return error.TryToRemoveDirectoryWithoutRecursiveFlag;
-                        try fs.cwd().deleteTree(filename);
+                        try Io.Dir.cwd().deleteTree(self.io, filename);
                     },
                     else => return err,
                 }
@@ -193,7 +202,7 @@ fn deletePermanently(self: Self) !void {
 }
 
 fn getTrashbinSize(self: Self) !u64 {
-    return fileinfo.getDirSize(self.allocator, self.trashbin_path.items);
+    return fileinfo.getDirSize(self.allocator, self.io, self.trashbin_path.items);
 }
 
 fn getTrashbinPath(allocator: Allocator) !ArrayList(u8) {
@@ -238,8 +247,9 @@ fn nameMangling(
     );
     var base64_buf: [@bitSizeOf(u64)]u8 = undefined;
 
+    const timestamp = try Io.Clock.real.now(self.io);
     const path_hash = try fmt.allocPrint(self.allocator, "{d}|{d}", .{
-        time.milliTimestamp(),
+        timestamp.toMilliseconds(),
         hashString(filename),
     });
     const hashed_string = base64_encoder.encode(&base64_buf, path_hash);

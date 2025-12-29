@@ -4,7 +4,6 @@ const fileinfo = @import("../fileinfo.zig");
 const win = @import("windows");
 const fmt = std.fmt;
 const fs = std.fs;
-const io = std.io;
 const mem = std.mem;
 const time = std.time;
 const unicode = std.unicode;
@@ -16,6 +15,7 @@ const handleYesNo = @import("../input_handler.zig").handleYesNo;
 
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
+const Io = std.Io;
 
 const XiloError = error{
     TryToRemoveDirectoryWithoutRecursiveFlag,
@@ -26,6 +26,7 @@ const XiloError = error{
 
 // fields for Remover
 allocator: Allocator,
+io: Io,
 recursive: bool,
 force: bool,
 permanent: bool,
@@ -37,6 +38,7 @@ const Self = @This();
 
 pub fn init(
     allocator: Allocator,
+    io: Io,
     recursive: bool,
     force: bool,
     permanent: bool,
@@ -45,6 +47,7 @@ pub fn init(
 ) !Self {
     return .{
         .allocator = allocator,
+        .io = io,
         .recursive = recursive,
         .force = force,
         .permanent = permanent,
@@ -156,23 +159,23 @@ fn deletePermanently(self: Self) !void {
         }
 
         if (isAbsolute(filename)) {
-            fs.deleteFileAbsolute(filename) catch |err| {
+            Io.Dir.deleteFileAbsolute(self.io, filename) catch |err| {
                 switch (err) {
                     error.IsDir => {
                         if (!self.recursive)
                             return error.TryToRemoveDirectoryWithoutRecursiveFlag;
-                        try fs.deleteTreeAbsolute(filename);
+                        try Io.Dir.deleteTreeAbsolute(self.io, filename);
                     },
                     else => return err,
                 }
             };
         } else {
-            fs.cwd().deleteFile(filename) catch |err| {
+            Io.Dir.cwd().deleteFile(self.io, filename) catch |err| {
                 switch (err) {
                     error.IsDir => {
                         if (!self.recursive)
                             return error.TryToRemoveDirectoryWithoutRecursiveFlag;
-                        try fs.cwd().deleteTree(filename);
+                        try Io.Dir.cwd().deleteTree(self.io, filename);
                     },
                     else => return err,
                 }

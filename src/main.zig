@@ -8,10 +8,16 @@ const Remover = switch (builtin.os.tag) {
     else => @compileError("only linux, macos and windows are supported"),
 };
 
+const Io = std.Io;
+
 pub fn main() !u8 {
     var arena = std.heap.ArenaAllocator.init(heap.c_allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
+
+    var threaded = Io.Threaded.init(allocator, .{});
+    defer threaded.deinit();
+    const io = threaded.io();
 
     var zlap = try @import("zlap").Zlap(@embedFile("./xilo_commands.zlap"), null).init(allocator);
     defer zlap.deinit();
@@ -37,7 +43,7 @@ pub fn main() !u8 {
 
     if (zlap.is_help) {
         var buf: [1024]u8 = undefined;
-        var stdout = std.fs.File.stdout().writer(&buf);
+        var stdout = Io.File.stdout().writer(io, &buf);
         try stdout.interface.print("{s}\n", .{zlap.help_msg});
         return 1;
     }
@@ -56,6 +62,7 @@ pub fn main() !u8 {
 
     var remover = try Remover.init(
         allocator,
+        io,
         is_recursive,
         is_force,
         is_permanent,

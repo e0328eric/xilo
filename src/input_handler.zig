@@ -1,9 +1,9 @@
 const std = @import("std");
 const builtin = @import("builtin");
-const io = std.io;
 const mem = std.mem;
 
 const Allocator = mem.Allocator;
+const Io = std.Io;
 const StaticStringMap = std.StaticStringMap;
 
 const yesValue = StaticStringMap(void).initComptime(.{
@@ -15,16 +15,17 @@ const yesValue = StaticStringMap(void).initComptime(.{
 });
 
 pub fn handleYesNo(
+    io: Io,
     comptime fmt_str: []const u8,
     args: anytype,
 ) !bool {
     var writer_buf: [1024]u8 = undefined;
-    var stdout = std.fs.File.stdout().writer(&writer_buf);
+    var stdout = Io.File.stdout().writer(io, &writer_buf);
     try stdout.interface.print(fmt_str, args);
     try stdout.end();
 
     var reader_buf: [4096]u8 = undefined;
-    var stdin = std.fs.File.stdin().reader(&reader_buf);
+    var stdin = Io.File.stdin().reader(io, &reader_buf);
     const data = try stdin.interface.takeDelimiterExclusive('\n');
 
     // Since windows uses CRLF for EOL, we should trim \r character.

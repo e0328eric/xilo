@@ -1,15 +1,16 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-const xilo_version = std.SemanticVersion.parse("0.6.0") catch unreachable;
-const min_zig_string = "0.14.0";
-const program_name = "xilo";
+const XILO_VERSION_STR = @import("build.zig.zon").version;
+const XILO_VERSION = std.SemanticVersion.parse(XILO_VERSION_STR) catch unreachable;
+const MIN_ZIG_STRING = @import("build.zig.zon").minimum_zig_version;
+const PROGRAM_NAME = @tagName(@import("build.zig.zon").name);
 
 // NOTE: This code came from
 // https://github.com/zigtools/zls/blob/master/build.zig.
 const Build = blk: {
     const current_zig = builtin.zig_version;
-    const min_zig = std.SemanticVersion.parse(min_zig_string) catch unreachable;
+    const min_zig = std.SemanticVersion.parse(MIN_ZIG_STRING) catch unreachable;
     if (current_zig.order(min_zig) == .lt) {
         @compileError(std.fmt.comptimePrint(
             "Your Zig version v{} does not meet the minimum build requirement of v{}",
@@ -70,9 +71,9 @@ pub fn build(b: *Build) !void {
 
     const exe = b.addExecutable(
         .{
-            .name = program_name,
+            .name = PROGRAM_NAME,
             .root_module = exe_mod,
-            .version = xilo_version,
+            .version = XILO_VERSION,
         },
     );
     b.installArtifact(exe);
