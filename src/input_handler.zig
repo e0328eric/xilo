@@ -30,7 +30,7 @@ pub fn handleYesNo(
 
     // Since windows uses CRLF for EOL, we should trim \r character.
     return if (builtin.os.tag == .windows)
-        yesValue.has(mem.trimRight(u8, data, "\r"))
+        yesValue.has(mem.trimEnd(u8, data, "\r"))
     else
         yesValue.has(data);
 }

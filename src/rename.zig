@@ -57,7 +57,7 @@ fn renameAcrossMountPoints(
     new_dir: Io.Dir,
     new_subpath: []const u8,
 ) !void {
-    if (try fileinfo.isDir(old_subpath)) {
+    if (try fileinfo.isDir(io, old_subpath)) {
         try renameAcrossMountPointsDirs(
             io,
             allocator,
@@ -109,7 +109,7 @@ fn renameAcrossMountPointsDirs(
         );
         defer allocator.free(path);
 
-        if (try fileinfo.isDir(path)) {
+        if (try fileinfo.isDir(io, path)) {
             try renameAcrossMountPointsDirs(
                 io,
                 allocator,
@@ -198,7 +198,7 @@ fn renameAbsoluteAcrossMountPoints(
         );
         defer allocator.free(path);
 
-        if (try fileinfo.isDir(path)) {
+        if (try fileinfo.isDir(io, path)) {
             try renameAcrossMountPointsDirs(
                 io,
                 allocator,
@@ -230,7 +230,7 @@ fn renameAbsoluteAcrossMountPoints(
         );
         defer allocator.free(path);
 
-        if (try fileinfo.isDir(path)) {
+        if (try fileinfo.isDir(io, path)) {
             try entry.dir.deleteTree(io, entry.path);
         } else {
             try entry.dir.deleteFile(io, entry.path);

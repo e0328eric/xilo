@@ -59,15 +59,7 @@ pub fn build(b: *Build) !void {
             .{ .name = "windows", .module = win_zig },
         },
     });
-    const cpp_flags = [_][]const u8{"-std=c++17"} ++ if (optimize == .Debug)
-        [_][]const u8{"-DZIG_DEBUG_MODE"}
-    else
-        [_][]const u8{""};
     exe_mod.addOptions("xilo_build", exe_options);
-    exe_mod.addCSourceFile(.{
-        .file = b.path("./src/fileinfo.cc"),
-        .flags = &cpp_flags,
-    });
 
     const exe = b.addExecutable(
         .{

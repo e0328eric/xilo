@@ -9,40 +9,32 @@ var buf = [_]u8{0} ** 4096;
 var fixed_allocator = FixedBufferAllocator.init(&buf);
 const allocator = fixed_allocator.allocator();
 
-extern "c" fn isDirRaw(path: [*c]const u8, result: ?*bool) bool;
-extern "c" fn fileSizeRaw(path: [*c]const u8, result: ?*u64) bool;
-
 const FileInfoError = error{
     CannotGetFileInfo,
     CannotGetFileSize,
     CannotGetDirSize,
 };
 
-pub fn isDir(path: []const u8) !bool {
-    const path_null = try allocator.dupeZ(u8, path);
-    defer allocator.free(path_null);
-
-    var result = false;
-    if (!isDirRaw(path_null.ptr, &result)) return error.CannotGetFileInfo;
-
-    return result;
+inline fn lstat(
+    dir: Io.Dir,
+    io: Io,
+    sub_path: []const u8,
+) !Io.Dir.Stat {
+    return Io.Dir.statFile(dir, io, sub_path, .{ .follow_symlinks = false });
 }
 
-pub fn isDirZ(path: [:0]const u8) !bool {
-    var result = false;
-    if (!isDirRaw(path.ptr, &result)) return error.CannotGetFileInfo;
-
-    return result;
+pub fn isDir(io: Io, path: []const u8) !bool {
+    const stat = try lstat(Io.Dir.cwd(), io, path);
+    return stat.kind == .directory;
 }
 
-pub fn getFileSize(path: []const u8) !u64 {
-    const path_null = try allocator.dupeZ(u8, path);
-    defer allocator.free(path_null);
+pub fn isDirZ(io: Io, path: [:0]const u8) !bool {
+    return isDir(io, @ptrCast(path));
+}
 
-    var result: u64 = 0;
-    if (!fileSizeRaw(path_null.ptr, &result)) return error.CannotGetFileSize;
-
-    return result;
+pub fn getFileSize(io: Io, path: []const u8) !u64 {
+    const stat = try lstat(Io.Dir.cwd(), io, path);
+    return stat.size;
 }
 
 pub fn getDirSize(
@@ -81,10 +73,10 @@ pub fn getDirSize(
             };
             defer allocator.free(absolute_file_path);
 
-            const file_size = if (try isDir(absolute_file_path))
+            const file_size = if (try isDir(io, absolute_file_path))
                 try getDirSize(outsize_allocator, io, absolute_file_path)
             else
-                try getFileSize(absolute_file_path);
+                try getFileSize(io, absolute_file_path);
             output +|= file_size;
         } else break;
     }

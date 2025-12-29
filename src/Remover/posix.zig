@@ -102,7 +102,7 @@ fn delete(self: Self) !void {
             if (!(try handleYesNo(self.io, msg_fmt, .{filename}))) return;
         }
 
-        if (try fileinfo.isDir(filename) and !self.recursive) {
+        if (try fileinfo.isDir(self.io, filename) and !self.recursive) {
             return error.TryToRemoveDirectoryWithoutRecursiveFlag;
         }
 
@@ -166,7 +166,7 @@ fn deletePermanently(self: Self) !void {
                 "the directory `{s}` and its subcontents will be removed permantly.\n" ++
                 " " ** 6 ++ "Are you sure to remove this? (y/N): ";
 
-            if (try fileinfo.isDir(filename)) {
+            if (try fileinfo.isDir(self.io, filename)) {
                 if (!(try handleYesNo(self.io, dir_msg_fmt, .{filename})))
                     return;
             } else {

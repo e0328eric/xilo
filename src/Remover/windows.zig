@@ -72,7 +72,10 @@ pub fn run(self: Self) !void {
 }
 
 fn showTrashbinSpace(self: Self) !void {
-    const stdout = std.io.getStdOut().writer();
+    var buf: [4096]u8 = undefined;
+    const stdout_fs = Io.File.stdout();
+    var stdout_buf = stdout_fs.writer(self.io, &buf);
+    var stdout = &stdout_buf.interface;
 
     var trashbin_info: win.SHQUERYRBINFO = undefined;
     const hr = win.SHQueryRecycleBinW(null, &trashbin_info);
@@ -81,11 +84,11 @@ fn showTrashbinSpace(self: Self) !void {
         return error.FailedToGetTrashbinSize;
     }
 
-    const size_human_readable = try parseBytes(
+    var size_human_readable = try parseBytes(
         self.allocator,
         @intCast(trashbin_info.i64Size),
     );
-    defer size_human_readable.deinit();
+    defer size_human_readable.deinit(self.allocator);
 
     const msg_fmt = ansi.note ++ "Note: " ++ ansi.reset ++
         "The space of the current trashbin is {s}.\n";
@@ -97,10 +100,10 @@ fn delete(self: Self) !void {
         if (!self.force) {
             const msg_fmt = ansi.warn ++ "Warn: " ++
                 ansi.reset ++ "Are you sure to remove `{s}`? (y/N): ";
-            if (!(try handleYesNo(self.allocator, msg_fmt, .{filename}))) return;
+            if (!(try handleYesNo(self.io, msg_fmt, .{filename}))) return;
         }
 
-        if (try fileinfo.isDir(filename) and !self.recursive) {
+        if (try fileinfo.isDir(self.io, filename) and !self.recursive) {
             return error.TryToRemoveDirectoryWithoutRecursiveFlag;
         }
 
@@ -128,8 +131,8 @@ fn deletePermanently(self: Self) !void {
         const really_msg_fmt = ansi.warn ++ "Warn: " ++
             ansi.reset ++ "Are you " ++ ansi.bold ++ "really" ++
             ansi.reset ++ " sure to empty the trashbin? (y/N): ";
-        if (!(try handleYesNo(self.allocator, msg_fmt, .{}))) return;
-        if (!(try handleYesNo(self.allocator, really_msg_fmt, .{}))) return;
+        if (!(try handleYesNo(self.io, msg_fmt, .{}))) return;
+        if (!(try handleYesNo(self.io, really_msg_fmt, .{}))) return;
 
         const dw_flag = win.SHERB_NOCONFIRMATION | win.SHERB_NOSOUND;
         if (win.FAILED(win.SHEmptyRecycleBinW(null, null, dw_flag))) {
@@ -149,11 +152,11 @@ fn deletePermanently(self: Self) !void {
                 "the directory `{s}` and its subcontents will be removed permantly.\n" ++
                 " " ** 6 ++ "Are you sure to remove this? (y/N): ";
 
-            if (try fileinfo.isDir(filename)) {
-                if (!(try handleYesNo(self.allocator, dir_msg_fmt, .{filename})))
+            if (try fileinfo.isDir(self.io, filename)) {
+                if (!(try handleYesNo(self.io, dir_msg_fmt, .{filename})))
                     return;
             } else {
-                if (!(try handleYesNo(self.allocator, file_msg_fmt, .{filename})))
+                if (!(try handleYesNo(self.io, file_msg_fmt, .{filename})))
                     return;
             }
         }
@@ -164,7 +167,7 @@ fn deletePermanently(self: Self) !void {
                     error.IsDir => {
                         if (!self.recursive)
                             return error.TryToRemoveDirectoryWithoutRecursiveFlag;
-                        try Io.Dir.deleteTreeAbsolute(self.io, filename);
+                        try Io.Dir.cwd().deleteTree(self.io, filename);
                     },
                     else => return err,
                 }
