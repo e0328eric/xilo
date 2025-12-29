@@ -22,7 +22,7 @@ pub fn handleYesNo(
     var writer_buf: [1024]u8 = undefined;
     var stdout = Io.File.stdout().writer(io, &writer_buf);
     try stdout.interface.print(fmt_str, args);
-    try stdout.end();
+    try stdout.interface.flush();
 
     var reader_buf: [4096]u8 = undefined;
     var stdin = Io.File.stdin().reader(io, &reader_buf);
