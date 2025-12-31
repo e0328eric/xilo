@@ -1,5 +1,5 @@
 const std = @import("std");
-const ansi = @import("../ansi.zig");
+const ansi = @import("../../ansi.zig");
 const fileinfo = @import("../fileinfo.zig");
 const win = @import("windows");
 const fmt = std.fmt;

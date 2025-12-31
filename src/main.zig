@@ -2,15 +2,18 @@ const std = @import("std");
 const builtin = @import("builtin");
 const heap = std.heap;
 const ansi = @import("./ansi.zig");
+const zlap = @import("zlap");
+
+const Allocator = std.mem.Allocator;
+const Io = std.Io;
 const Remover = switch (builtin.os.tag) {
-    .windows => @import("./Remover/windows.zig"),
-    .linux, .macos => @import("./Remover/posix.zig"),
+    .windows => @import("./rm/Remover/windows.zig"),
+    .linux, .macos => @import("./rm/Remover/posix.zig"),
     else => @compileError("only linux, macos and windows are supported"),
 };
+const Zlap = zlap.Zlap(@embedFile("./xilo_commands.zlap"), null);
 
-const Io = std.Io;
-
-pub fn main() !u8 {
+pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(heap.c_allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
@@ -19,34 +22,68 @@ pub fn main() !u8 {
     defer threaded.deinit();
     const io = threaded.io();
 
-    var zlap = try @import("zlap").Zlap(@embedFile("./xilo_commands.zlap"), null).init(allocator);
-    defer zlap.deinit();
+    var zlap_cmd: Zlap = try .init(allocator);
+    defer zlap_cmd.deinit();
 
+    if (zlap_cmd.is_help) {
+        var buf: [1024]u8 = undefined;
+        var stdout = Io.File.stdout().writer(io, &buf);
+        try stdout.interface.print("{s}\n", .{zlap_cmd.help_msg});
+        return;
+    }
+
+    const subcmds = .{ "ln", "rm" };
+    inline for (subcmds) |subcmd_str| {
+        if (zlap_cmd.isSubcmdActive(subcmd_str)) {
+            const subcmd = zlap_cmd.active_subcmd.?;
+            try @field(@This(), subcmd_str ++ "Step")(
+                allocator,
+                io,
+                subcmd,
+            );
+        }
+    } else {
+        std.debug.print("{s}\n", .{zlap_cmd.help_msg});
+        return error.InvalidSubcommand;
+    }
+}
+
+fn lnStep(
+    allocator: Allocator,
+    io: Io,
+    ln_subcmd: *const zlap.Subcmd,
+) !void {
+    _ = allocator;
+
+    const source = ln_subcmd.args.get("SOURCE").?.value.string;
+    const dest = ln_subcmd.args.get("DEST").?.value.string;
+
+    try @import("./ln/ln.zig").ln(io, source, dest);
+}
+
+fn rmStep(
+    allocator: Allocator,
+    io: Io,
+    rm_subcmd: *const zlap.Subcmd,
+) !void {
     // Datas from command line argument
-    const file_contents = zlap.main_args.get("FILES").?.value.strings.items;
+    const file_contents = rm_subcmd.args.get("FILES").?.value.strings.items;
     const is_recursive = flag: {
-        const flag = zlap.main_flags.get("recursive") orelse break :flag false;
+        const flag = rm_subcmd.flags.get("recursive") orelse break :flag false;
         break :flag flag.value.bool;
     };
     const is_force = flag: {
-        const flag = zlap.main_flags.get("force") orelse break :flag false;
+        const flag = rm_subcmd.flags.get("force") orelse break :flag false;
         break :flag flag.value.bool;
     };
     const is_permanent = flag: {
-        const flag = zlap.main_flags.get("permanent") orelse break :flag false;
+        const flag = rm_subcmd.flags.get("permanent") orelse break :flag false;
         break :flag flag.value.bool;
     };
     const is_show_space = flag: {
-        const flag = zlap.main_flags.get("show_space") orelse break :flag false;
+        const flag = rm_subcmd.flags.get("show_space") orelse break :flag false;
         break :flag flag.value.bool;
     };
-
-    if (zlap.is_help) {
-        var buf: [1024]u8 = undefined;
-        var stdout = Io.File.stdout().writer(io, &buf);
-        try stdout.interface.print("{s}\n", .{zlap.help_msg});
-        return 1;
-    }
 
     if (!is_show_space and !is_permanent and file_contents.len == 0) {
         const err_msg = ansi.@"error" ++ "Error: " ++ ansi.reset ++
@@ -56,8 +93,7 @@ pub fn main() !u8 {
 
         std.debug.print(err_msg, .{});
         std.debug.print(note_msg, .{});
-        std.debug.print("{s}\n", .{zlap.help_msg});
-        return 1;
+        return error.InvalidRmArgument;
     }
 
     var remover = try Remover.init(
@@ -84,6 +120,4 @@ pub fn main() !u8 {
             else => return err,
         }
     };
-
-    return 0;
 }

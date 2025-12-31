@@ -1,7 +1,14 @@
-#@xilo | A simple replacement of "rm" command {
+#@xilo | Various Utilities for Terminals {}
+
+#rm | A simple replacement of "rm" command {
     *FILES : strings | files or directories to remove;
     -recursive,r := @false | remove directory recursively;
     -force,f := @false | force to delete files/directories;
     -permanent,p := @false | empty the trashbin if FILES is empty. Otherwise, delete contents unrecoverably;
     -show_space,s := @false | show the trashbin space;
+}
+
+#ln | A simple replacement of "ln" command {
+    *SOURCE := @null | source file/directory to make symlink;
+    *DEST   := @null | target path where symlink is made;
 }

@@ -1,5 +1,5 @@
 const std = @import("std");
-const ansi = @import("../ansi.zig");
+const ansi = @import("../../ansi.zig");
 const fileinfo = @import("../fileinfo.zig");
 const base64 = std.base64;
 const fmt = std.fmt;
