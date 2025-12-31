@@ -78,9 +78,10 @@ fn showTrashbinSpace(self: Self) !void {
     var stdout = &stdout_buf.interface;
 
     var trashbin_info: win.SHQUERYRBINFO = undefined;
+    trashbin_info.cbSize = @sizeOf(win.SHQUERYRBINFO);
     const hr = win.SHQueryRecycleBinW(null, &trashbin_info);
     if (win.FAILED(hr)) {
-        try printError(self.allocator, win.GetLastError());
+        try printError(self.allocator, @as(u32, @bitCast(hr)));
         return error.FailedToGetTrashbinSize;
     }
 
@@ -93,6 +94,7 @@ fn showTrashbinSpace(self: Self) !void {
     const msg_fmt = ansi.note ++ "Note: " ++ ansi.reset ++
         "The space of the current trashbin is {s}.\n";
     try stdout.print(msg_fmt, .{size_human_readable.items});
+    try stdout.flush();
 }
 
 fn delete(self: Self) !void {

@@ -86,7 +86,7 @@ pub fn run(self: Self) !void {
         const msg_fmt = ansi.note ++ "Note: " ++ ansi.reset ++
             "The space of the current trashbin is {s}.\n";
         try stdout.interface.print(msg_fmt, .{size_human_readable.items});
-        try stdout.end();
+        try stdout.interface.flush();
     } else if (self.permanent) {
         return self.deletePermanently();
     } else {
