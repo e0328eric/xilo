@@ -41,6 +41,7 @@ pub fn main() !void {
                 io,
                 subcmd,
             );
+            return;
         }
     } else {
         std.debug.print("{s}\n", .{zlap_cmd.help_msg});
