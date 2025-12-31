@@ -1,11 +1,11 @@
 # xilo
-A simple replacement of "rm" command. This is also a practical example how to use [zlap](https://github.com/e0328eric/zlap.git) library.
+A simple replacement of "rm" and "ln" command. This is also a practical example how to use [zlap](https://github.com/e0328eric/zlap.git) library.
 The origin of this program name comes from the greek word `ξήλωμα` which means the word `rip` in English.
 
 # How to install
 
 ## Use precompiled binary
-One need zig 0.15.2.
+One need master zig to compile this program.
 Download binary from `Releases`. All binaries are compiled into `ReleaseSmall` optimize.
 
 ## Build from source
