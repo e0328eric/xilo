@@ -18,6 +18,7 @@ const custom_trashbin_path = @import("xilo_build").custom_trashbin_path;
 
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
+const Environ = process.Environ;
 const Io = std.Io;
 
 const XiloError = error{
@@ -41,13 +42,14 @@ const Self = @This();
 pub fn init(
     allocator: Allocator,
     io: Io,
+    environ: Environ,
     recursive: bool,
     force: bool,
     permanent: bool,
     show_space: bool,
     file_contents: []const []const u8,
 ) !Self {
-    var trashbin_path = try getTrashbinPath(allocator);
+    var trashbin_path = try getTrashbinPath(allocator, environ);
     errdefer trashbin_path.deinit(allocator);
 
     Io.Dir.createDirAbsolute(io, trashbin_path.items, .default_dir) catch |err| {
@@ -205,7 +207,7 @@ fn getTrashbinSize(self: Self) !u64 {
     return fileinfo.getDirSize(self.allocator, self.io, self.trashbin_path.items);
 }
 
-fn getTrashbinPath(allocator: Allocator) !ArrayList(u8) {
+fn getTrashbinPath(allocator: Allocator, environ: Environ) !ArrayList(u8) {
     var output = try ArrayList(u8).initCapacity(allocator, 150);
     errdefer output.deinit(allocator);
 
@@ -214,11 +216,15 @@ fn getTrashbinPath(allocator: Allocator) !ArrayList(u8) {
     } else {
         switch (@import("builtin").os.tag) {
             .linux => {
-                try output.appendSlice(allocator, std.posix.getenv("HOME").?);
+                const home_dir = try environ.getAlloc(allocator, "HOME");
+                defer allocator.free(home_dir);
+                try output.appendSlice(allocator, home_dir);
                 try output.appendSlice(allocator, "/.cache/xilo");
             },
             .macos => {
-                try output.appendSlice(allocator, std.posix.getenv("HOME").?);
+                const home_dir = try environ.getAlloc(allocator, "HOME");
+                defer allocator.free(home_dir);
+                try output.appendSlice(allocator, home_dir);
                 try output.appendSlice(allocator, "/.Trash");
             },
             else => @compileError("only linux, macos and windows are supported"),

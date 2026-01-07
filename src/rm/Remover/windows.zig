@@ -39,12 +39,15 @@ const Self = @This();
 pub fn init(
     allocator: Allocator,
     io: Io,
+    environ: std.process.Environ,
     recursive: bool,
     force: bool,
     permanent: bool,
     show_space: bool,
     file_contents: []const []const u8,
 ) !Self {
+    _ = environ;
+
     return .{
         .allocator = allocator,
         .io = io,

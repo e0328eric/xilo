@@ -5,6 +5,7 @@ const ansi = @import("./ansi.zig");
 const zlap = @import("zlap");
 
 const Allocator = std.mem.Allocator;
+const Environ = std.process.Environ;
 const Io = std.Io;
 const Remover = switch (builtin.os.tag) {
     .windows => @import("./rm/Remover/windows.zig"),
@@ -13,16 +14,11 @@ const Remover = switch (builtin.os.tag) {
 };
 const Zlap = zlap.Zlap(@embedFile("./xilo_commands.zlap"), null);
 
-pub fn main() !void {
-    var arena = std.heap.ArenaAllocator.init(heap.c_allocator);
-    defer arena.deinit();
-    const allocator = arena.allocator();
+pub fn main(init: std.process.Init) !void {
+    const allocator = init.arena.allocator();
+    const io = init.io;
 
-    var threaded = Io.Threaded.init(allocator, .{});
-    defer threaded.deinit();
-    const io = threaded.io();
-
-    var zlap_cmd: Zlap = try .init(allocator);
+    var zlap_cmd: Zlap = try .init(allocator, init.minimal.args);
     defer zlap_cmd.deinit();
 
     if (zlap_cmd.is_help) {
@@ -39,6 +35,7 @@ pub fn main() !void {
             try @field(@This(), subcmd_str ++ "Step")(
                 allocator,
                 io,
+                init.minimal.environ,
                 subcmd,
             );
             return;
@@ -52,9 +49,11 @@ pub fn main() !void {
 fn lnStep(
     allocator: Allocator,
     io: Io,
+    environ: Environ,
     ln_subcmd: *const zlap.Subcmd,
 ) !void {
     _ = allocator;
+    _ = environ;
 
     const source = ln_subcmd.args.get("SOURCE").?.value.string;
     const dest = ln_subcmd.args.get("DEST").?.value.string;
@@ -65,6 +64,7 @@ fn lnStep(
 fn rmStep(
     allocator: Allocator,
     io: Io,
+    environ: Environ,
     rm_subcmd: *const zlap.Subcmd,
 ) !void {
     // Datas from command line argument
@@ -100,6 +100,7 @@ fn rmStep(
     var remover = try Remover.init(
         allocator,
         io,
+        environ,
         is_recursive,
         is_force,
         is_permanent,
