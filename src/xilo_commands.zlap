@@ -12,3 +12,8 @@
     *SOURCE := @null | source file/directory to make symlink;
     *DEST   := @null | target path where symlink is made;
 }
+
+#wget | Simple "wget" {
+    *URL := @null | URL to obtain source;
+    *OUTPUT := output.txt | output filename;
+}

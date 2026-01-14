@@ -2,12 +2,12 @@
     .name = .xilo,
     .version = "0.7.0",
     .fingerprint = 0xdc8cffa2ab80660f,
-    .minimum_zig_version = "0.16.0-dev.1859+212968c57",
+    .minimum_zig_version = "0.16.0-dev.2193+fc517bd01",
     .paths = .{""},
     .dependencies = .{
         .zlap = .{
-            .url = "git+https://github.com/e0328eric/zlap.git#950e50a9502c8ec2df0c9fb4cb5850e75688e135",
-            .hash = "zlap-0.10.1-boKVXLu7AABBJA7E-_rFQEcBzKf6OFIwV81ed3HvBJFE",
+            .url = "git+https://github.com/e0328eric/zlap.git#8b8dd6db8e8df13f2039decd39ecf9446a197d42",
+            .hash = "zlap-0.10.2-boKVXJ28AACm8jZXMmY7fUt_1RV7bEcE4AqZfz2xn0QV",
         },
     },
 }
