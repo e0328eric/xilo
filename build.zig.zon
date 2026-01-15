@@ -6,8 +6,8 @@
     .paths = .{""},
     .dependencies = .{
         .zlap = .{
-            .url = "git+https://github.com/e0328eric/zlap.git#8b8dd6db8e8df13f2039decd39ecf9446a197d42",
-            .hash = "zlap-0.10.2-boKVXJ28AACm8jZXMmY7fUt_1RV7bEcE4AqZfz2xn0QV",
+            .url = "git+https://github.com/e0328eric/zlap.git#0534a407f6b372a18b6a0ff1a7c27cf40a69e227",
+            .hash = "zlap-0.10.2-boKVXBu7AACHtErrFzi9Nt9_-NKLx3u7o3_rnrpygzor",
         },
     },
 }

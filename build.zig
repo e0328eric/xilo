@@ -58,11 +58,6 @@ pub fn build(b: *Build) !void {
             .{ .name = "windows", .module = win_zig },
         },
     });
-    if (target.result.os.tag == .windows) {
-        exe_mod.addWin32ResourceFile(.{
-            .file = b.path("src/resources.rc"),
-        });
-    }
     exe_mod.addOptions("xilo_build", exe_options);
 
     const exe = b.addExecutable(

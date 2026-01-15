@@ -139,8 +139,8 @@ fn deletePermanently(self: Self) !void {
         if (!(try handleYesNo(self.io, msg_fmt, .{}))) return;
         if (!(try handleYesNo(self.io, really_msg_fmt, .{}))) return;
 
-        const dw_flag = win.SHERB_NOCONFIRMATION | win.SHERB_NOSOUND;
-        if (win.FAILED(win.SHEmptyRecycleBinW(null, null, dw_flag))) {
+        //const dw_flag = win.SHERB_NOCONFIRMATION | win.SHERB_NOSOUND;
+        if (win.FAILED(win.SHEmptyRecycleBinW(null, null, 0))) {
             try printError(self.allocator, win.GetLastError());
             return error.FailedToEmptyTrashbin;
         }
